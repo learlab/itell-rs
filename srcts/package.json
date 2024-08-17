@@ -1,0 +1,20 @@
+{
+    "name": "srcts",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "build": "tsx index.ts"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "remark-frontmatter": "^5.0.0",
+        "unist-util-visit": "^5.0.0",
+        "unist-util-visit-parents": "^6.0.1"
+    },
+    "devDependencies": {
+        "hastscript": "^9.0.0"
+    }
+}
