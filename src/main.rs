@@ -3,7 +3,6 @@ use std::io::Write;
 
 #[derive(Debug)]
 struct PageData {
-    id: i32,
     title: String,
     slug: String,
     order: usize,
@@ -13,7 +12,6 @@ struct PageData {
 
 #[derive(Debug)]
 struct ChunkData {
-    id: i32,
     title: String,
     slug: String,
     depth: usize,
@@ -85,7 +83,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     ChunkData {
-                        id,
                         slug,
                         text,
                         depth,
@@ -96,7 +93,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect::<Vec<ChunkData>>();
 
             PageData {
-                id,
                 title,
                 slug,
                 summary,

@@ -12,9 +12,19 @@ cargo run
 
 Look into `/output`
 
+Some notable differences from the current workflow
+
+- use `.md` instead of `.mdx`
+
+- `
+
+- `order` is added to frontmatter, which is determined by the order of content in strapi
+
+- no section wrapping, that will be handled by the remark plugin. This keeps markdown clean.
+
 ## Parse markdown
 
-In practice, this will be done byvelite. This is just to show that with the right remark plugins, we can parse them into the format Next.js wants.
+In practice, this will be done byvelite. This is just to show that with custom remark plugins, we can parse them into the format Next.js wants.
 
 ```bash
 cd srcts
