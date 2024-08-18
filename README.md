@@ -50,7 +50,7 @@ Some details
 
 ## Parse markdown
 
-In practice, this part will be down by Next.js. This is just to show that with custom remark plugins, we can parse them into the correct html markup.
+In practice, this part will be done by Next.js. This is just to show that with custom remark plugins, we can parse them into the correct html markup.
 
 ```bash
 cd srcts
