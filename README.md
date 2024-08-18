@@ -9,7 +9,7 @@ Goal:
 - Use markdown instead of mdx, this can prevent unexpected js injection and weird escape behavior. At run time, next.js will only transform certain tags into custom components.
 
 ```rust
-cargo run
+cargo run <volume_id>
 ```
 
 This generates one markdown document per page in the `output` folder. Example:
@@ -57,7 +57,7 @@ cd srcts
 pnpm build
 ```
 
-Look into `test.html`
+Look into `output-html`
 
 
 ## On the strapi side

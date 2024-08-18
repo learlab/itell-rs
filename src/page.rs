@@ -32,17 +32,14 @@ pub async fn get_pages_by_volume_id(volume_id: i32) -> Result<Vec<Value>, reqwes
     .json()
     .await?;
 
-    let data = resp.get("data").unwrap();
-    let attributes = data.get("attributes").unwrap();
-    let pages = attributes
-        .get("Pages")
-        .unwrap()
-        .get("data")
-        .unwrap()
-        .as_array()
-        .unwrap();
+    let data = resp.get("data").expect("no data in volume response");
+    let attributes = data.get("attributes").expect("volume as no attributes");
 
-    return Ok(pages.clone());
+    return Ok(attributes
+        .get("Pages")
+        .and_then(|p| p.get("data").and_then(|d| d.as_array()))
+        .unwrap_or(&Vec::new())
+        .to_owned());
 }
 
 pub fn clean_pages(pages: Vec<Value>) -> Vec<PageData> {
@@ -54,22 +51,29 @@ pub fn clean_pages(pages: Vec<Value>) -> Vec<PageData> {
 
             let title = attributes
                 .get("Title")
-                .unwrap()
-                .as_str()
-                .unwrap()
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
                 .to_string();
             let slug = attributes
                 .get("Slug")
-                .unwrap()
-                .as_str()
-                .unwrap()
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
                 .to_string();
-            let mut assignments: Vec<String> = Vec::new();
-            if attributes.get("HasSummary").unwrap().as_bool().unwrap() {
-                assignments.push(String::from("summary"));
-            }
+            let assignments = if attributes
+                .get("HasSummary")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                vec![String::from("summary")]
+            } else {
+                Vec::new()
+            };
 
-            let content = attributes.get("Content").unwrap().as_array().unwrap();
+            let default_content = Vec::new();
+            let content = attributes
+                .get("Content")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&default_content);
 
             let chunks = content
                 .iter()
@@ -78,25 +82,21 @@ pub fn clean_pages(pages: Vec<Value>) -> Vec<PageData> {
                     let text = chunk.get("MDX").unwrap().as_str().unwrap().to_string();
                     let title = chunk.get("Header").unwrap().as_str().unwrap().to_string();
                     let show_header = chunk.get("ShowHeader").unwrap().as_bool().unwrap();
-
                     let mut cri: Option<QuestionAnswer> = None;
-                    if chunk.get("Question").is_some() && chunk.get("ConstructedResponse").is_some()
-                    {
+                    if let (Some(question), Some(answer)) = (
+                        chunk.get("Question").and_then(|q| q.as_str()),
+                        chunk.get("ConstructedResponse").and_then(|a| a.as_str()),
+                    ) {
                         cri = Some(QuestionAnswer {
                             slug: slug.clone(),
-                            question: chunk.get("Question").unwrap().as_str().unwrap().to_string(),
-                            answer: chunk
-                                .get("ConstructedResponse")
-                                .unwrap()
-                                .as_str()
-                                .unwrap()
-                                .to_string(),
+                            question: question.to_string(),
+                            answer: answer.to_string(),
                         });
                     }
 
                     let mut depth: usize = 2;
 
-                    if let Some(header_level) = chunk.get("HeaderLevel").unwrap().as_str() {
+                    if let Some(header_level) = chunk.get("HeaderLevel").and_then(|h| h.as_str()) {
                         if header_level == "h3" {
                             depth = 3;
                         }
@@ -121,7 +121,7 @@ pub fn clean_pages(pages: Vec<Value>) -> Vec<PageData> {
                 slug,
                 assignments,
                 chunks,
-                order: index, // chunks: content.split(" ").map(|s| s.to_string()).collect(),
+                order: index,
             }
         })
         .collect::<Vec<PageData>>()

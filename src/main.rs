@@ -1,4 +1,4 @@
-use std::fs;
+use std::{env, fs};
 
 use page::{clean_pages, get_pages_by_volume_id, write_page};
 mod frontmatter;
@@ -15,7 +15,15 @@ fn create_output_dir(output_dir: &str) -> Result<(), Box<dyn std::error::Error>>
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pages = get_pages_by_volume_id(10).await?;
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Usage: cargo run <volume_id>");
+        return Ok(());
+    }
+
+    let volume_id = args[1].parse::<i32>()?;
+
+    let pages = get_pages_by_volume_id(volume_id).await?;
 
     let pages_clean = clean_pages(pages);
 

@@ -3,8 +3,8 @@ import { h } from "hastscript";
 import { SKIP, visit } from "unist-util-visit";
 import yaml from "yaml";
 
-function rehypeWrapHeadingSection() {
-	return (tree: Root, file) => {
+export const rehypeWrapHeadingSection = () => {
+	return (tree: Root) => {
 		const sections: Element[] = [];
 		let currentSection: Element | null = null;
 
@@ -29,8 +29,8 @@ function rehypeWrapHeadingSection() {
 						"aria-labelledby": id,
 					},
 					[
-						{ type: "text", value: "\n" },
-						h("h2", { id, class: className }, [...node.children]),
+						{ type: "text", value: "\n\n" },
+						h("h2", node.properties, [...node.children]),
 						{ type: "text", value: "\n" },
 					],
 				);
@@ -53,15 +53,15 @@ function rehypeWrapHeadingSection() {
 		sections.forEach((section, index) => {
 			newTree.children.push(section);
 			if (index < sections.length - 1) {
-				newTree.children.push({ type: "text", value: "\n" });
+				newTree.children.push({ type: "text", value: "\n\n" });
 			}
 		});
 
 		tree.children = newTree.children;
 	};
-}
+};
 
-export function rehypeFrontmatter() {
+export const rehypeFrontmatter = () => {
 	return (tree: Root, file) => {
 		const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
 		const match = file.value.match(frontmatterRegex);
@@ -77,13 +77,13 @@ export function rehypeFrontmatter() {
 			);
 			file.cri = cri;
 		}
-		visit(tree, "element", (node, index, parent) => {
+		visit(tree, "element", () => {
 			return SKIP;
 		});
 	};
-}
+};
 
-export function rehypeAddCri() {
+export const rehypeAddCri = () => {
 	return (tree: Root, file) => {
 		const cri = file.cri as Record<
 			string,
@@ -113,70 +113,9 @@ export function rehypeAddCri() {
 					};
 
 					// Append the new element to the end of the section
-					node.children.push(newElement, { type: "text", value: "\n" });
+					node.children.push(newElement, { type: "text", value: "\n\n" });
 				}
 			}
 		});
 	};
-}
-
-const attributeRegex = / {(?<attributes>[^}]+)}$/;
-const idRegex = /#(?<id>[^\s}]+)/;
-const classRegex = /\.(?<className>[^\s}]+)/g;
-const keyValueRegex = /(?<key>[^\s=]+)=(?<value>[^\s}]+)/g;
-
-const remarkHeadingAttr = () => {
-	return (node: any) => {
-		visit(node, "heading", (node: any) => {
-			const textNode = node.children.at(-1);
-			if (textNode?.type !== "text") {
-				return SKIP;
-			}
-
-			const text = textNode.value.trimEnd();
-			const matched = attributeRegex.exec(text);
-			if (!matched) {
-				return SKIP;
-			}
-
-			const { attributes } = matched.groups!;
-			textNode.value = text.slice(0, matched.index);
-
-			const hProperties: Record<string, any> = {};
-			const classes: string[] = [];
-
-			// Extract id
-			const idMatch = idRegex.exec(attributes);
-			if (idMatch) {
-				const { id } = idMatch.groups!;
-				hProperties.id = id;
-			}
-
-			// Extract classes
-			let classMatch;
-			while ((classMatch = classRegex.exec(attributes)) !== null) {
-				const { className } = classMatch.groups!;
-				classes.push(className);
-			}
-			if (classes.length > 0) {
-				hProperties.class = classes.join(" ");
-			}
-
-			// Extract key-value pairs
-			let keyValueMatch;
-			while ((keyValueMatch = keyValueRegex.exec(attributes)) !== null) {
-				const { key, value } = keyValueMatch.groups!;
-				const camelCaseKey = `data${key.charAt(0).toUpperCase() + key.slice(1)}`;
-				hProperties[camelCaseKey] = value;
-			}
-
-			node.data ??= {};
-			node.data.hProperties = hProperties;
-		});
-	};
-};
-
-export {
-	rehypeWrapHeadingSection as rehypeHeadingToSection,
-	remarkHeadingAttr,
 };
