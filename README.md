@@ -37,6 +37,8 @@ In this chapter, we will start to do things that can actually be called _program
 In Chapter 1, we made values and applied operators to them to get new values. Creating values like this is the main substance of any JavaScript program. But that substance has to be framed in a larger structure to be useful. That’s what we’ll cover in this chapter.
 ```
 
+See [example.md](./example.md) for a complete example.
+
 Except for the goals mentioned above, other notable differences from the current workflow include
 
 - use `${slug}.md` instead of `chapter-{number}.mdx`,
