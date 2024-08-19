@@ -4,7 +4,7 @@ Proof-of-concept of extracting content from strapi and parsing them with remark 
 
 Goal:
 
-- Get all page data in markdown files at build time. So the frontend can be completely decoupled from strapi during runtime. Importantly, constructed response items are now stored in the markdown frontmatter.
+- Get all page data in markdown files at build time, so the frontend can be completely decoupled from strapi during runtime. Importantly, constructed response items are now stored in the markdown frontmatter.
 
 - Use markdown instead of mdx, this can prevent unexpected js injection and weird escape behavior. At run time, next.js will only transform certain tags into custom components.
 
@@ -18,6 +18,9 @@ This generates one markdown document per page in the `output` folder. Example:
 title: 2. Program Structure
 slug: 2-program-structure
 order: 1
+chunks:
+- Introduction-203pt
+- Expressions-and-Statements-775t
 assignments:
 - summary
 cri:
@@ -64,13 +67,11 @@ Look into `output-html`
 
 - components:
    - new names:
-     - `Sandbox` -> `is-sandbox-js`
+     - `Sandbox` -> `i-sandbox-js`
      - `Blockquote` -> `i-blockquote`
      - `Info` -> `i-callout variant="info"`
      - `Image` -> `i-image`
      - `Accordion` -> `i-accordion` and `i-accordion-item`
-
-  - avoid using self-closing tags (even if there is no children)
 
   - multi-word props should be separated by hyphens, and not be camelCased.
 
@@ -83,18 +84,25 @@ Look into `output-html`
   - newlines should be inserted after and before component tags, i.e.
     ```html
     <i-callout variant="info">
-<!-- new line here -->
+    <!-- newline here -->
         content
-<!-- new line here -->
+    <!-- newline here -->
     </i-callout>
     ```
 
   - lists should be separated by new lines, i.e.
     ```markdown
-
     - item 1
 
     - item 2
 
     - item 3
     ```
+
+- To simplify parsing and chunk revealing, all h2 headings are treated as chunks. This is not ideal for "References" and "Exercises" chunks, they are typically the last chunk of a page and should be revealed automatically when the previous chunk is revealed. A quick fix is to add them as h3 headings at the end of the previous chunk. I think this is ok, but if we want to perfect this here are the required changes:
+
+  - still treat references and exercises as h2 headings, but have a field indicating if it is a standalone chunk (which means they are blurred and revealed independently) or a auxiliary chunk (which means they are revealed when the previous chunk is revealed).
+
+  - change relevant remark plugins to add attribute to the wrapper section element.
+
+  - change `question-control.tsx` to inspect the attribute and reveal the chunk accordingly.
