@@ -17,8 +17,7 @@ fn create_output_dir(output_dir: &str) -> Result<(), Box<dyn std::error::Error>>
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        println!("Usage: cargo run <volume_id>");
-        return Ok(());
+        return Err("Usage: cargo run <volume_id>".into());
     }
 
     let volume_id = args[1].parse::<i32>()?;

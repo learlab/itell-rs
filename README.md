@@ -71,3 +71,30 @@ Look into `output-html`
      - `Accordion` -> `i-accordion` and `i-accordion-item`
 
   - avoid using self-closing tags (even if there is no children)
+
+  - multi-word props should be separated by hyphens, and not be camelCased.
+
+    ```html
+    <i-sandbox-js page-slug = "page" chunk-slug = "chunk">
+        content
+    </i-sandbox-js>
+    ```
+
+  - newlines should be inserted after and before component tags, i.e.
+    ```html
+    <i-callout variant="info">
+<!-- new line here -->
+        content
+<!-- new line here -->
+    </i-callout>
+    ```
+
+  - lists should be separated by new lines, i.e.
+    ```markdown
+
+    - item 1
+
+    - item 2
+
+    - item 3
+    ```

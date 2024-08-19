@@ -3,10 +3,11 @@ use serde::Serialize;
 #[derive(Serialize, Debug)]
 #[serde(untagged)]
 pub enum Frontmatter<'a> {
-    Title(String),
-    Slug(String),
+    Title(&'a str),
+    Slug(&'a str),
     Assignments(&'a [String]),
     Order(usize),
+    Chunks(Vec<&'a str>),
     CRI(&'a [&'a QuestionAnswer]),
 }
 

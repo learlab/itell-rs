@@ -135,10 +135,19 @@ pub fn write_page(page: &PageData, output_dir: &str) -> Result<(), Box<dyn std::
         .unwrap();
 
     let mut fm: BTreeMap<&str, Frontmatter> = BTreeMap::new();
-    fm.insert("title", Frontmatter::Title(page.title.clone()));
-    fm.insert("slug", Frontmatter::Slug(page.slug.clone()));
+    fm.insert("title", Frontmatter::Title(page.title.as_str()));
+    fm.insert("slug", Frontmatter::Slug(page.slug.as_str()));
     fm.insert("order", Frontmatter::Order(page.order));
     fm.insert("assignments", Frontmatter::Assignments(&page.assignments));
+    fm.insert(
+        "chunks",
+        Frontmatter::Chunks(
+            page.chunks
+                .iter()
+                .map(|c| c.slug.as_str())
+                .collect::<Vec<&str>>(),
+        ),
+    );
 
     let mut cri = Vec::<&QuestionAnswer>::new();
 
