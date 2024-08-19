@@ -1,6 +1,6 @@
 Proof-of-concept of extracting content from strapi and parsing them with remark plugins.
 
-## Fetch strapi content
+## Refactoring on fetching strapi content
 
 Goal:
 
@@ -51,6 +51,8 @@ Some details
 
 - We can publish this script as a homebrew binary (whether have it stay Rust or rewrite it in another language) and call it from github workflows. This will reduce publishing time.
 
+- since cri is in md, they are rendered as static elements instead of being inserted by `useEffect`
+
 ## Parse markdown
 
 In practice, this part will be done by Next.js. This is just to show that with custom remark plugins, we can parse them into the correct html markup.
@@ -64,6 +66,9 @@ Look into `output-html`
 
 
 ## On the strapi side
+
+
+### Required
 
 - components:
    - new names:
@@ -98,6 +103,46 @@ Look into `output-html`
 
     - item 3
     ```
+
+
+### Optional
+
+- Add a `description` field for page, mainly for accessibility and SEO purposes, can be AI generated.  Description will they will not be visible to regular readers, which means they won't be used as a hint for summary. Still, they should not be thorough, instead act more like a 2-4 sentence preface that motivates people to continue reading.
+
+
+
+## Future work
+
+- Generalized assignments: whether a page requires a summary, quiz or code exercises can be represented by a single `assignments` field
+
+    ```
+    ---
+    assignments:
+    - summary
+    - quiz
+    - exercises
+    ---
+    ```
+
+    How do we include data for quiz and exercises? Potentially could do this
+
+    ```yaml
+    quiz:
+    - question: How is the minus operator different in JavaScript?
+      options:
+        - text: "it can be both unary and binary"
+        - correct: true
+        - text: "it can only be unary"
+        - correct: false
+
+    exercises:
+        - type: "javascript"
+          prompt: "Write a function that adds two numbers"
+          placeholder: "function add(a, b) {  }"
+    ```
+
+    But I am afraid this could lead to poor abstractions in which we find YAML is not expressive enough.
+
 
 - To simplify parsing and chunk revealing, all h2 headings are treated as chunks. This is not ideal for "References" and "Exercises" chunks, they are typically the last chunk of a page and should be revealed automatically when the previous chunk is revealed. A quick fix is to add them as h3 headings at the end of the previous chunk. I think this is ok, but if we want to perfect this here are the required changes:
 

@@ -23,14 +23,14 @@ struct ChunkData {
     show_header: bool,
 }
 
+const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
+const QUERY: &str = "?populate%5BPages%5D%5Bpopulate%5D%5BContent%5D=true";
+
 pub async fn get_pages_by_volume_id(volume_id: i32) -> Result<Vec<Value>, reqwest::Error> {
-    let resp: serde_json::Value = reqwest::get(format!(
-        "https://itell-strapi-um5h.onrender.com/api/texts/{}?populate%5BPages%5D%5Bpopulate%5D%5BContent%5D=true",
-        volume_id,
-    ))
-    .await?
-    .json()
-    .await?;
+    let resp: serde_json::Value = reqwest::get(format!("{}{}{}", BASE_URL, volume_id, QUERY))
+        .await?
+        .json()
+        .await?;
 
     let data = resp.get("data").expect("no data in volume response");
     let attributes = data.get("attributes").expect("volume as no attributes");
