@@ -78,24 +78,45 @@ Look into `output-html`
      - `Image` -> `i-image`
      - `Accordion` -> `i-accordion` and `i-accordion-item`
 
+
+  - avoid using self-closing tags, even if there is no children, e.g.
+
+    ```html
+    <i-image src="image.png"> <!-- also add a newline -->
+    </i-image>
+    ```
+
+  - passing props no longer needs `{}`, just use the bare value, e.g.
+
+    ```html
+    <i-image width="300" height="200">
+    </i-image>
+
+    <!-- don't do this -->
+    <i-image width={300} height={200}>
+    </i-image>
+    ```
+
   - multi-word props should be separated by hyphens, and not be camelCased.
 
     ```html
-    <i-sandbox-js page-slug = "page" chunk-slug = "chunk">
+    <i-sandbox-js page-slug="page" chunk-slug="chunk">
         content
     </i-sandbox-js>
     ```
 
-  - newlines should be inserted after and before component tags, i.e.
+  - if a component has children that needs to be treated as markdown, newlines should be inserted after and before component tags, i.e.
     ```html
     <i-callout variant="info">
     <!-- newline here -->
-        content
+    - item 1
+
+    - item 2
     <!-- newline here -->
     </i-callout>
     ```
 
-  - lists should be separated by new lines, i.e.
+  - lists should be separated by newlines in general, i.e.
     ```markdown
     - item 1
 
