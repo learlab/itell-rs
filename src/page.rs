@@ -1,8 +1,23 @@
 use crate::frontmatter::{Frontmatter, QuestionAnswer};
-use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs::OpenOptions;
 use std::io::Write;
+use ureq;
+
+use anyhow::{Context, Result};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum RequestError {
+    #[error("HTTP request failed: {0}")]
+    HttpError(#[from] ureq::Error),
+
+    #[error("Failed to read response body: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("Server returned an error: {status}")]
+    ServerError { status: u16 },
+}
 
 #[derive(Debug)]
 pub struct PageData {
@@ -26,24 +41,35 @@ struct ChunkData {
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
 const QUERY: &str = "?populate%5BPages%5D%5Bpopulate%5D%5BContent%5D=true";
 
-pub async fn get_pages_by_volume_id(volume_id: i32) -> Result<Vec<Value>, reqwest::Error> {
-    let resp: serde_json::Value = reqwest::get(format!("{}{}{}", BASE_URL, volume_id, QUERY))
-        .await?
-        .json()
-        .await?;
+pub struct VolumeResponse(Vec<serde_json::Value>);
 
-    let data = resp.get("data").expect("no data in volume response");
-    let attributes = data.get("attributes").expect("volume as no attributes");
+pub fn get_pages_by_volume_id(volume_id: i32) -> Result<VolumeResponse> {
+    let response = ureq::get(format!("{}{}{}", BASE_URL, volume_id, QUERY).as_str())
+        .call()
+        .map_err(|e| match e {
+            ureq::Error::Status(code, _) => RequestError::ServerError { status: code },
+            other => RequestError::HttpError(other),
+        })
+        .context("Failed to send request")?;
 
-    return Ok(attributes
-        .get("Pages")
-        .and_then(|p| p.get("data").and_then(|d| d.as_array()))
-        .unwrap_or(&Vec::new())
-        .to_owned());
+    let body: serde_json::Value = response
+        .into_json()
+        .context("Failed to read response body")?;
+
+    let data = body.get("data").context("no data in volume response")?;
+    let attributes = data.get("attributes").context("volume as no attributes")?;
+
+    return Ok(VolumeResponse(
+        attributes
+            .get("Pages")
+            .and_then(|p| p.get("data").and_then(|d| d.as_array()))
+            .unwrap_or(&Vec::new())
+            .to_owned(),
+    ));
 }
 
-pub fn clean_pages(pages: Vec<Value>) -> Vec<PageData> {
-    pages
+pub fn clean_pages(resp: VolumeResponse) -> Vec<PageData> {
+    resp.0
         .iter()
         .enumerate()
         .map(|(index, page)| {
@@ -82,28 +108,24 @@ pub fn clean_pages(pages: Vec<Value>) -> Vec<PageData> {
                     let text = chunk.get("MDX").unwrap().as_str().unwrap().to_string();
                     let title = chunk.get("Header").unwrap().as_str().unwrap().to_string();
                     let show_header = chunk.get("ShowHeader").unwrap().as_bool().unwrap();
-                    let mut cri: Option<QuestionAnswer> = None;
-                    if let (Some(question), Some(answer)) = (
-                        chunk.get("Question").and_then(|q| q.as_str()),
-                        chunk.get("ConstructedResponse").and_then(|a| a.as_str()),
-                    ) {
-                        cri = Some(QuestionAnswer {
+
+                    let question = chunk.get("Question").and_then(|q| q.as_str());
+                    let answer = chunk.get("ConstructedResponse").and_then(|a| a.as_str());
+
+                    let cri = match (question, answer) {
+                        (Some(question), Some(answer)) => Some(QuestionAnswer {
                             slug: slug.clone(),
                             question: question.to_string(),
                             answer: answer.to_string(),
-                        });
-                    }
+                        }),
+                        _ => None,
+                    };
 
-                    let mut depth: usize = 2;
-
-                    if let Some(header_level) = chunk.get("HeaderLevel").and_then(|h| h.as_str()) {
-                        if header_level == "h3" {
-                            depth = 3;
-                        }
-                        if header_level == "h4" {
-                            depth = 4;
-                        }
-                    }
+                    let depth = match chunk.get("HeaderLevel").and_then(|h| h.as_str()) {
+                        Some("h3") => 3,
+                        Some("h4") => 4,
+                        _ => 2,
+                    };
 
                     ChunkData {
                         slug,
@@ -127,7 +149,7 @@ pub fn clean_pages(pages: Vec<Value>) -> Vec<PageData> {
         .collect::<Vec<PageData>>()
 }
 
-pub fn write_page(page: &PageData, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn write_page(page: &PageData, output_dir: &str) -> Result<()> {
     let mut file = OpenOptions::new()
         .create_new(true)
         .write(true)
@@ -185,7 +207,7 @@ pub fn write_page(page: &PageData, output_dir: &str) -> Result<(), Box<dyn std::
         serde_yaml_ng::to_string(&fm)?,
         content_string
     )
-    .unwrap();
+    .context(format!("failed to write to page {}", page.slug))?;
 
     Ok(())
 }
