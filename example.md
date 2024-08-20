@@ -2,231 +2,64 @@
 assignments:
 - summary
 chunks:
-- Introduction-163pt
-- Requirements-164pt
-- Requirement-1-686t
-- Requirement-2-4-687t
-- Requirements-5-7-688t
-- Requirements-8-690t
-- Requirements-9-10-689t
-- Requirements-11-15-692t
+- slug: Learning-Objectives-220pt
+  type: plain
+- slug: Can-We-Rely-on-Common-Sense?-815t
+  type: regular
+- slug: How-Could-We-Be-So-Wrong?-816t
+  type: regular
+- slug: References-221pt
+  type: plain
 cri:
-- question: What should be done to prevent unauthorized entry into confined spaces when entrance openings cannot be closed and secured?
-  answer: Openings should be guarded by a railing, temporary cover, or other temporary barrier that will prevent entry or an accidental fall through the opening and protect each employee working in the space.
-  slug: Requirement-1-686t
-- question: What elements should the Hazard Analysis and/or CoW documentation address according to the passage?
-  answer: Identification of potential hazards, internal configuration, acceptable entry conditions, air ventilation, verification of entry conditions, isolation of hazardous energy, appropriate equipment, specialized equipment, PPE requirements, and heat stress safeguards.
-  slug: Requirement-2-4-687t
-- question: What is required prior to Confined Space Entry according to the Portable Gas Detection OE Standard?
-  answer: Gas testing shall be required prior to Confined Space Entry in accordance with the Portable Gas Detection OE Standard.
-  slug: Requirements-5-7-688t
-- question: What are the minimum requirements for rescue plans in Permit-Required Confined Space Entry?
-  answer: The rescue plan must include rescue methods, means of communication, trained rescue personnel, access to the space, and devices for vertical retrieval, among other things.
-  slug: Requirements-8-690t
-- question: What must be done to reclassify a Permit-Required Confined Space?
-  answer: The characteristics that made the space a permit required confined space must be eliminated, work conducted within the space must not create a hazardous atmosphere, affected personnel must be notified of the reclassification, and proper documentation must be approved.
-  slug: Requirements-9-10-689t
-- question: What type of sensors are recommended for use in inert atmospheres?
-  answer: Specialty sensors, especially lower explosive limit (LEL) including infrared sensors or dilution tubes, shall be used.
-  slug: Requirements-11-15-692t
-order: 0
-slug: confined-space-entry
-title: Confined Space Entry
+- question: Is it possible to reach accurate conclusions about human behavior based solely on common sense or intuition?
+  answer: No, scientific research has shown that many commonly held beliefs about human behavior are inaccurate.
+  slug: Can-We-Rely-on-Common-Sense?-815t
+- question: Why do psychologists emphasize the importance of skepticism in evaluating beliefs?
+  answer: Psychologists emphasize skepticism to encourage pausing to consider alternatives, search for evidence, and avoid intuitive but incorrect beliefs.
+  slug: How-Could-We-Be-So-Wrong?-816t
+order: 2
+slug: 4-science-and-common-sense
+title: 4.  Science and Common Sense
 ---
 
-## Introduction {#Introduction-163pt .sr-only}
+## Learning Objectives {#Learning-Objectives-220pt .sr-only}
 
-![chevron.png](https://nbjrajrmujlgxmcvqsge.supabase.co/storage/v1/object/public/strapi/files/chevron.png-348343af3e5d5c4385379c374655ae5c.png)
-
-Introduction
-------------
-
-The Confined Space Entry standard is designed to help prevent illness and injuries to personnel, damage to property or adverse environmental impact when personnel are performing work in confined spaces. Confined Spaces are defined as spaces large enough and so configured that personnel can bodily enter and perform assigned work, have limited or restricted means for entry or exit and are not designed for continuous occupancy. This standard defines the requirements for Confined Space Entry
-
-## Requirements {#Requirements-164pt}
-
-The following sections provide minimum requirements for Confined Space Entry as well as supporting guidance to clarify the intent of those requirements.
-
-* Requirements of this Standard **shall** be met.
-* Guidance in this Standard **may** be used as an aid to develop local documents that meet or exceed Control of Work (CoW) requirements. If examples are provided within guidance sections, they are not meant to represent the only acceptable means for meeting a requirement. BUs may develop or utilize other suitable methods not discussed in this document as long as the requirements are met. Implementation of guidance is not auditable.
-
-## Requirement 1 {#Requirement-1-686t .sr-only}
-
-### Requirement 1
-
-Controls shall be in place to prevent unauthorized entry into confined spaces.
-
-* Openings large enough to allow a person to enter a permit-required confined space and is readily accessible under normal conditions, shall be visibly identified as a confided space when the attendant is not present. (e.g., signage or other effective means of communication)
-
-<Info title="Guidance">
-a. When feasible, the entry opening should be closed, covered, and secured.  <br /> <br/>
-b. When entrance openings cannot be closed and secured, openings should be guarded by a railing, temporary cover, or other temporary barrier that will prevent entry or an accidental fall through the opening and that will protect each employee working in the space from foreign objects entering the space.  <br /> <br/>
-c. Signage should be affixed at the location, warning of the confined space. The following or similar text should be displayed on the sign: “DANGER CONFINED SPACE, DO NOT ENTER”.  <br /> <br/>
-d. In facilities with similar, recognizable, or multiple confined spaces (such as storage tank facilities or workplaces with multiple manholes), BUs may identify such spaces with facility signage.  <br /> <br/>
-e. If a confined space has a locked entry cover or panel, or an access door that can only be opened with tools, the use of signs may not be required.
+<Info title="Learninb Objectives">
+\- Explain the limitations of common sense when it comes to achieving a detailed and accurate understanding of human behavior.Give several examples of common sense or folk psychology that are incorrect.Define skepticism and its role in scientific psychology.
 </Info>
 
-## Requirement 2 - 4 {#Requirement-2-4-687t .sr-only}
+## Can We Rely on Common Sense? {#Can-We-Rely-on-Common-Sense?-815t}
 
-### Requirement 2
+Some people wonder whether the scientific approach to psychology is necessary. Can we not reach the same conclusions based on common sense or intuition? Certainly we all have intuitive beliefs about people’s behavior, thoughts, and feelings—and these beliefs are collectively referred to as **folk psychology**. Although much of our folk psychology is probably reasonably accurate, it is clear that much of it is not. For example, most people believe that anger can be relieved by “letting it out”—perhaps by punching something or screaming loudly. Scientific research, however, has shown that this approach tends to leave people feeling more angry, not less (Bushman, 2002)\[1\]. Likewise, most people believe that no one would confess to a crime that they  had not committed unless perhaps that person was being physically tortured. But again, extensive empirical research has shown that false confessions are surprisingly common and occur for a variety of reasons (Kassin & Gudjonsson, 2004).
 
-BUs shall identify and evaluate their confined spaces to determine those that are permit-required confined spaces.
+<Callout>
+**_**Some Great Myths**_**
 
-* Entries into Confined Spaces with Hazardous Characteristics shall require a Confined Space Entry Permit
+In __50 Great Myths of Popular Psychology__, psychologist Scott Lilienfeld and colleagues discuss several widely held commonsense beliefs about human behavior that scientific research has shown to be incorrect (Lilienfeld, Lynn, Ruscio, & Beyerstein, 2010)\[3\]. Here is a short list:
 
-### Requirement 3
+“People use only 10% of their brain power.”
 
-A Hazard Analysis shall be conducted in accordance with the Hazard Analysis OE Standard when planning work involving Confined Space Entry.
+“Most people experience a midlife crisis in their 40’s or 50’s.”
 
-### Requirement 4
+“Students learn best when teaching styles are matched to their learning styles.”
 
-The Hazard Analysis and/or CoW documentation shall address the following elements:
+“Low self-esteem is a major cause of psychological problems.”
 
-1.  Identification of significant potential hazards from task, space, and simultaneous operations (SIMOPS) in area. 
-2.  Internal configuration, obstructions, or unique hazards associated with the space (e.g., fall hazards, residues, and contaminants, etc.). 
-3.  Acceptable entry conditions (e.g., oxygen concentration, %LEL, toxics). 
-4.   Appropriate air ventilation (e.g., continuous forced, local exhaust, etc.). 
-5.  Verification of acceptable entry conditions for duration of entry (e.g., acceptable gas testing frequency). 
-6.   Positive Physical Isolation of hazardous energy in accordance with Isolation of Hazardous Energy OE Standard. 
-7.   Equipment appropriately rated for the space to be used (e.g., electrical equipment rated for the area classification) and mitigating controls for such equipment as necessary (e.g., Hot Work permit). 
-8.  Specialized equipment (e.g., respiratory equipment, rescue equipment, ingress and egress equipment, etc.). 
-9.  Personal protective equipment (PPE) requirements.
-10. Heat stress safeguards (e.g., work/rest breaks, specialty PPE) as necessary.
+“Psychiatric admissions and crimes increase during full moons.”
+</Callout>
 
-## Requirements 5-7 {#Requirements-5-7-688t .sr-only}
+## How Could We Be So Wrong? {#How-Could-We-Be-So-Wrong?-816t}
 
-### Requirement 5
+How can so many of our intuitive beliefs about human behavior be so wrong? Notice that this is an empirical question, and it just so happens that psychologists have conducted scientific research on it and identified many contributing factors (Gilovich, 1991)\[4\]. One is that forming detailed and accurate beliefs requires powers of observation, memory, and analysis to an extent that we do not naturally possess. It would be nearly impossible to count the number of words spoken by the women and men we happen to encounter, estimate the number of words they spoke per day, average these numbers for both groups, and compare them—all in our heads. This is why we tend to rely on mental shortcuts (what psychologists refer to as [**heuristics**](https://kpu.pressbooks.pub/psychmethods4e/chapter/science-and-common-sense/#term_27_843)) in forming and maintaining our beliefs. For example, if a belief is widely shared—especially if it is endorsed by “experts”—and it makes intuitive sense, we tend to assume it is true. This is compounded by the fact that we then tend to focus on cases that confirm our intuitive beliefs and not on cases that dis-confirm them. This is called [**confirmation bias**](https://kpu.pressbooks.pub/psychmethods4e/chapter/science-and-common-sense/#term_27_844). For example, once we begin to believe that women are more talkative than men, we tend to notice and remember talkative women and silent men but ignore or forget silent women and talkative men. We also hold incorrect beliefs in part because it would be nice if they __were__ true. For example, many people believe that calorie-reducing diets are an effective long-term treatment for obesity, yet a thorough review of the scientific evidence has shown that they are not (Mann et al., 2007)\[5\]. People may continue to believe in the effectiveness of dieting in part because it gives them hope for losing weight if they are obese or makes them feel good about their own “self-control” if they are not.
 
-Permit Required Work Authorization shall be required for entry into Permit-Required Confined Spaces.
+Scientists—especially psychologists—understand that they are just as susceptible as anyone else to intuitive but incorrect beliefs. This is why they cultivate an attitude of [**skepticism**](https://kpu.pressbooks.pub/psychmethods4e/chapter/science-and-common-sense/#term_27_845). Being skeptical does not mean being cynical or distrustful, nor does it mean questioning every belief or claim one comes across (which would be impossible anyway). Instead, it means pausing to consider alternatives and to search for evidence—especially systematically collected empirical evidence—when there is enough at stake to justify doing so. For example, imagine that you read a magazine article that claims that giving children a weekly allowance is a good way to help them develop financial responsibility. This is an interesting and potentially important claim (especially if you have children of your own). Taking an attitude of skepticism, however, would mean pausing to ask whether it might be instead that receiving an allowance merely teaches children to spend money—perhaps even to be more materialistic. Taking an attitude of skepticism would also mean asking what evidence supports the original claim. Is the author a scientific researcher? Is any scientific evidence cited? If the issue was important enough, it might also mean turning to the research literature to see if anyone else had studied it.
 
-* BUs shall determine the level of Work Authorization required for entry into Non-Permit Required Confined Spaces and/or Reclassified Confined Spaces.
+Because there is often not enough evidence to fully evaluate a belief or claim, scientists also cultivate a [**tolerance for uncertainty**](https://kpu.pressbooks.pub/psychmethods4e/chapter/science-and-common-sense/#term_27_847). They accept that there are many things that they simply do not know. For example, it turns out that there is no scientific evidence that receiving an allowance causes children to be more financially responsible, nor is there any scientific evidence that it causes them to be materialistic. Although this kind of uncertainty can be problematic from a practical perspective—for example, making it difficult to decide what to do when our children ask for an allowance—it is exciting from a scientific perspective. If we do not know the answer to an interesting and empirically testable question, science, and perhaps even you as a researcher, may be able to provide the answer.
 
-### Requirement 6
+## References {#References-221pt}
 
-Gas testing shall be required prior to Confined Space Entry in accordance with the Portable Gas Detection OE Standard.
-
-* Authorized entrants and/or their representatives shall have the right to observe any gas monitoring/testing of Confined Spaces.
-* If gas testing indicates changed conditions, work must stop, employees must evacuate the space and the space must be re-evaluated to address the changed conditions before work may resume.
-
-### Requirement 7
-
-Additional controls shall be in place when work is performed in Permit-Required Confined Spaces including:
-
-1.  A rescue team and appropriate rescue equipment 
-2.  Attendant
-3.  Entry Supervisor 
-4.  Appropriate air ventilation 
-5.  Isolation of hazardous energy in accordance with the Isolation of Hazardous Energy OE Standard
-6.  Entry log maintained
-
-<Info title="Guidance">
-A third party may be utilized to fulfill these roles.  <br /> <br/>
-Ventilation could potentially include natural ventilation, or forced air ventilation (power fans, eductors, air conditioning, portable air blowers, weld fume extractors, etc.).
-</Info>
-
-## Requirements 8 {#Requirements-8-690t .sr-only}
-
-### Requirement 8
-
-Rescue plans shall be developed for Permit-Required Confined Space Entry. At a minimum, the rescue plans shall include the following: 
-
-1.  Rescue methods to be used in the following order of preference: 
-    * Self-rescue
-    * Non-entry rescue using retrieval device
-    * Entry rescue
-2.  Non-entry retrieval systems shall be utilized by authorized entrants (e.g., chest or full body harness with a retrieval line or wristlets). 
-    * If the system increases the overall risk of the entry, or does not increase the safety of the task, it is acceptable to waive the requirement. 
-    * The BU shall have a process for evaluating and approving this exception. 
-
-1.  Means of communicating the need for rescue. 
-2.  Requirements that rescue personnel are trained, properly equipped, and follow established procedures specific to the potential hazards of the Confined Space. 
-3.  Availability of at least one member of the rescue team or service who is trained and competent in basic first aid and CPR. 
-4.  Ability of rescuer to reach the victim(s) within a time frame that is appropriate for the permit space hazard(s) identified. 
-5.  Provide the rescue personnel access to the space from which rescue may be necessary. 
-6.  Availability of mechanical devices to retrieve personnel from vertical spaces more than 5 feet (1.52 m) deep. 
-7.  Method to verify the competency of rescue personnel. 
-
-<Info title="Guidance">
-BUs should verify training and competency of rescuers prior to Confined Space Entry. Methods to verify competency could include training documents, drill records (training drill performed at a minimum annually), etc. <br /> <br/>
-Rescue teams should be provided the opportunity to assess the physical confined space as necessary (potentially including entry) prior to the Confined Space entry work to be performed, as well as any other available information that may assist in developing the rescue plan (e.g., P&IDs, drawings, etc.).  <br /> <br/>
-BUs may have some of the above requirements listed in their Emergency Action Plan, training and competency process, COEM, or part of their permitting process. If the information is documented in another document, the information does not need to be listed on the Rescue Plan itself.
-</Info>
-
-## Requirements 9-10 {#Requirements-9-10-689t .sr-only}
-
-### Requirement 9
-
-The following shall be met to reclassify a Permit-Required Confined Space.
-
-1.  The characteristics that made the space a permit required confined space shall be eliminated.
-2.  Work conducted within the confined space shall not create a hazardous atmosphere or condition.
-3.  Affected personnel shall be notified that the space has been reclassified.
-4.  Documentation, including updated hazard analysis, authorizing the space to be reclassified shall be approved.
-
-If special hazardous characteristics arise in a reclassified confined space, all authorized entrants shall exit the confined space, and the space shall be reevaluated to determine how it will be classified.
-
-### Requirement 10
-
-**Confined Space Entry work shall be stopped/suspended, and all authorized entrants shall exit the space in the following circumstances:**
-
-1.  The attendant leaves the Confined Space Entry area without a qualified replacement.
-2.  Entry conditions exceed acceptable limits or limits stated on the permit.
-3.  There is a change in isolation points.
-4.  There is an equipment failure.
-5.  An order to evacuate is given by the attendant or entry supervisor.
-6.  An authorized entrant recognizes any warning signs or symptoms of exposure.
-7.  A facility emergency evacuation alarm is sounded.
-8.  An incident and/or near miss occurs.
-9.  Unexpected change of conditions or job scope
-10. Loss of communication between the entrant and attendant
-
-<Info title="Guidance">
-The types of equipment that may fail include gas testing equipment, ventilation system, etc. <br /> <br/>
-A remote attendant (attendant using camera-based technology) may still be considered an attendant. <br />
-</Info>
-
-## Requirements 11-15 {#Requirements-11-15-692t .sr-only}
-
-### Requirement 11
-
-Entry into inert atmosphere confined spaces shall only be allowed after alterative options have been evaluated and entry has documented approval by a High-Level Approver.
-
-* BUs shall develop specific inert entry procedures and controls that shall be implemented and followed.
-* Specialized rescue plans shall be developed and followed.
-
-Inert atmospheres require specialty sensors, especially lower explosive limit (LEL) including infrared sensors or dilution tubes shall be used.
-
-* The qualified gas tester (QGT) shall ensure that inert testing is performed in a manner that properly characterizes the flammability of a confined space.
-
-<Info title="Guidance">
-Documents such as <em>Chevron’s Inert Entry Process, Inert Entry Safeguard Verification Checklist, and Inert Enty Plan Approval </em>sheet should be referenced when developing procedures and executing inert entry work.
-</Info>
-
-### Requirement 12
-
-Gas cylinders (with the exception of breathing air cylinders) shall:
-
-1.  Not be taken into confined spaces.
-2.  Gas cylinder valves shall be closed when not in use.
-3.  Gas supply lines shall be removed from confined space or disconnected when not in use, unless space is being continuously monitored for hazardous atmospheres.
-
-<Info title="Guidance">
-Small handheld cans such as dye penetrant, handheld propane torch, compressed air, etc. can be used with approval of permit issuer
-</Info>
-
-### Requirement 13
-
-Personnel conducting activities associated with Confined Space Entry shall meet the training and competency requirements that apply to their roles, in accordance with the Training and Competency OE Standard.
-
-### Requirement 14
-
-Documentation associated with Confined Space Entry shall adhere to the record retention requirements detailed in the Control of Work OE Proces
-
-### Requirement 15
-
-An annual documented review of the Confined Space Program shall be conducted to assess the need for program revision and/or Confined Space Entry execution improvement.
-
-<Info title="Guidance">
-This review should include permits from Permit-Required Confined Space Entries, interviews with personnel performing Confined Space Entries, verification and validation data, and representative samples of rescue plans. <br/>
-An annual documented review may be done in conjunction with an annual audit.
-</Info>
+1.  Bushman, B. J. (2002). Does venting anger feed or extinguish the flame? Catharsis, rumination, distraction, anger, and aggressive responding. __Personality and Social Psychology Bulletin, 28__, 724–731. 
+2.  Kassin, S. M., & Gudjonsson, G. H. (2004). The psychology of confession evidence: A review of the literature and issues. __Psychological Science in the Public Interest, 5__, 33–67. 
+3.  Lilienfeld, S. O., Lynn, S. J., Ruscio, J., & Beyerstein, B. L. (2010). __50 great myths of popular psychology__. Malden, MA: Wiley-Blackwell. 
+4.  Gilovich, T. (1991). __How we know what isn’t so: The fallibility of human reason in everyday life__. New York, NY: Free Press. 
+5.  Mann, T., Tomiyama, A. J., Westling, E., Lew, A., Samuels, B., & Chatman, J. (2007). Medicare’s search for effective obesity treatments: Diets are not the answer. __American Psychologist, 62__, 220–233.

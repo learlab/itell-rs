@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     let default_output_dir = String::from("output");
     let output_dir = args.get(2).map_or(default_output_dir, |s| s.to_owned());
     let pages = get_pages_by_volume_id(volume_id).context("failed to fetch volume")?;
-    let pages_clean = clean_pages(pages);
+    let pages_clean = clean_pages(pages).context("failed to parse page")?;
 
     create_output_dir(&output_dir).context("failed to create output directory")?;
 

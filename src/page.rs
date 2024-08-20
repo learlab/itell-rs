@@ -1,10 +1,12 @@
-use crate::frontmatter::{Frontmatter, QuestionAnswer};
+use crate::frontmatter::{ChunkMeta, ChunkType, Frontmatter, QuestionAnswer};
+use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::str::FromStr;
 use ureq;
 
-use anyhow::Context;
+use anyhow::{Context, Ok};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -33,9 +35,10 @@ struct ChunkData {
     title: String,
     slug: String,
     depth: usize,
-    text: String,
+    content: String,
     cri: Option<QuestionAnswer>,
     show_header: bool,
+    chunk_type: ChunkType,
 }
 
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
@@ -68,28 +71,40 @@ pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeResponse> 
     ));
 }
 
-pub fn clean_pages(resp: VolumeResponse) -> Vec<PageData> {
+fn get_attribute<T>(value: &Value, attribute: &str) -> Option<T>
+where
+    T: FromStr,
+{
+    value.get(attribute).and_then(|v| match v {
+        Value::String(s) => T::from_str(s).ok(),
+        Value::Number(n) => {
+            if let Some(f) = n.as_f64() {
+                T::from_str(&f.to_string()).ok()
+            } else {
+                None
+            }
+        }
+        Value::Bool(b) => T::from_str(&b.to_string()).ok(),
+        _ => None,
+    })
+}
+
+pub fn clean_pages(resp: VolumeResponse) -> anyhow::Result<Vec<PageData>> {
     resp.0
         .iter()
         .enumerate()
         .map(|(index, page)| {
-            let attributes = page.get("attributes").unwrap();
+            let attributes = page.get("attributes").context("page has no attributes")?;
 
-            let title = attributes
-                .get("Title")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-            let slug = attributes
-                .get("Slug")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-            let assignments = if attributes
-                .get("HasSummary")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false)
-            {
+            let title = get_attribute(attributes, "Title")
+                .context(format!("page '{}' must set title", index))?;
+
+            let slug = get_attribute(attributes, "Slug")
+                .context(format!("page '{}' must set slug", &title))?;
+            let has_summary: bool = get_attribute(attributes, "HasSummary")
+                .context(format!("page '{}' must set HasSummary", &title))?;
+
+            let assignments = if has_summary {
                 vec![String::from("summary")]
             } else {
                 Vec::new()
@@ -104,49 +119,72 @@ pub fn clean_pages(resp: VolumeResponse) -> Vec<PageData> {
             let chunks = content
                 .iter()
                 .map(|chunk| {
-                    let slug = chunk.get("Slug").unwrap().as_str().unwrap().to_string();
-                    let text = chunk.get("MDX").unwrap().as_str().unwrap().to_string();
-                    let title = chunk.get("Header").unwrap().as_str().unwrap().to_string();
-                    let show_header = chunk.get("ShowHeader").unwrap().as_bool().unwrap();
+                    let chunk_title: String = get_attribute(chunk, "Header").context(format!(
+                        "chunk '{}' in page '{}' must set Header",
+                        index, &title
+                    ))?;
+                    let chunk_slug: String = get_attribute(chunk, "Slug").context(format!(
+                        "chunk '{}' in page '{}' must set Slug",
+                        index, &title
+                    ))?;
 
-                    let question = chunk.get("Question").and_then(|q| q.as_str());
-                    let answer = chunk.get("ConstructedResponse").and_then(|a| a.as_str());
+                    let content: String = get_attribute(chunk, "MDX").context(format!(
+                        "chunk '{}' in page '{}' must set MDX",
+                        index, &title
+                    ))?;
+
+                    let show_header: bool = get_attribute(chunk, "ShowHeader").unwrap_or_default();
+
+                    let question: Option<String> = get_attribute(chunk, "Question");
+                    let answer: Option<String> = get_attribute(chunk, "ConstructedResponse");
+
+                    let component: Option<String> = get_attribute(chunk, "__component");
+                    let chunk_type = component.map_or(ChunkType::Regular, |c| {
+                        if c == "page.plain-chunk" {
+                            ChunkType::Plain
+                        } else {
+                            ChunkType::Regular
+                        }
+                    });
 
                     let cri = match (question, answer) {
                         (Some(question), Some(answer)) => Some(QuestionAnswer {
-                            slug: slug.clone(),
-                            question: question.to_string(),
-                            answer: answer.to_string(),
+                            slug: chunk_slug.clone(),
+                            question,
+                            answer,
                         }),
                         _ => None,
                     };
 
-                    let depth = match chunk.get("HeaderLevel").and_then(|h| h.as_str()) {
+                    let header_level: Option<String> = get_attribute(chunk, "HeaderLevel");
+
+                    let depth = match header_level.as_deref() {
                         Some("h3") => 3,
                         Some("h4") => 4,
                         _ => 2,
                     };
 
-                    ChunkData {
-                        slug,
-                        text,
+                    Ok(ChunkData {
+                        title: chunk_title,
+                        slug: chunk_slug,
+                        content,
                         depth,
-                        title,
                         show_header,
                         cri,
-                    }
+                        chunk_type,
+                    })
                 })
-                .collect::<Vec<ChunkData>>();
+                .collect::<anyhow::Result<Vec<ChunkData>>>();
 
-            PageData {
+            Ok(PageData {
                 title,
                 slug,
                 assignments,
-                chunks,
+                chunks: chunks.context("failed to parse chunk")?,
                 order: index,
-            }
+            })
         })
-        .collect::<Vec<PageData>>()
+        .collect::<anyhow::Result<Vec<PageData>>>()
 }
 
 pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
@@ -166,8 +204,8 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
         Frontmatter::Chunks(
             page.chunks
                 .iter()
-                .map(|c| c.slug.as_str())
-                .collect::<Vec<&str>>(),
+                .map(|c| ChunkMeta::new(c.slug.as_str(), &c.chunk_type))
+                .collect::<Vec<ChunkMeta>>(),
         ),
     );
 
@@ -192,7 +230,7 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
                 chunk.title,
                 chunk.slug,
                 header_class,
-                chunk.text
+                chunk.content
             )
         })
         .collect::<Vec<String>>()
