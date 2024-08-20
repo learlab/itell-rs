@@ -4,7 +4,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use ureq;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -43,7 +43,7 @@ const QUERY: &str = "?populate%5BPages%5D%5Bpopulate%5D%5BContent%5D=true";
 
 pub struct VolumeResponse(Vec<serde_json::Value>);
 
-pub fn get_pages_by_volume_id(volume_id: i32) -> Result<VolumeResponse> {
+pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeResponse> {
     let response = ureq::get(format!("{}{}{}", BASE_URL, volume_id, QUERY).as_str())
         .call()
         .map_err(|e| match e {
@@ -63,7 +63,7 @@ pub fn get_pages_by_volume_id(volume_id: i32) -> Result<VolumeResponse> {
         attributes
             .get("Pages")
             .and_then(|p| p.get("data").and_then(|d| d.as_array()))
-            .unwrap_or(&Vec::new())
+            .context("no pages in volume response")?
             .to_owned(),
     ));
 }
@@ -149,7 +149,7 @@ pub fn clean_pages(resp: VolumeResponse) -> Vec<PageData> {
         .collect::<Vec<PageData>>()
 }
 
-pub fn write_page(page: &PageData, output_dir: &str) -> Result<()> {
+pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
         .create_new(true)
         .write(true)
