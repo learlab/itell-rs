@@ -1,11 +1,14 @@
 use serde::Serialize;
 
+use crate::page::PageParent;
+
 #[derive(Serialize, Debug)]
 #[serde(untagged)]
 pub enum Frontmatter<'a> {
     Title(&'a str),
     Slug(&'a str),
     Assignments(&'a [String]),
+    Parent(Option<&'a PageParent>),
     Order(usize),
     Chunks(Vec<ChunkMeta<'a>>),
     CRI(&'a [&'a QuestionAnswer]),

@@ -1,4 +1,5 @@
 use crate::frontmatter::{ChunkMeta, ChunkType, Frontmatter, QuestionAnswer};
+use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs::OpenOptions;
@@ -21,10 +22,17 @@ enum RequestError {
     ServerError { status: u16 },
 }
 
+#[derive(Debug, Serialize)]
+pub struct PageParent {
+    title: String,
+    slug: String,
+}
+
 #[derive(Debug)]
 pub struct PageData {
     title: String,
     slug: String,
+    parent: Option<PageParent>,
     order: usize,
     assignments: Vec<String>,
     chunks: Vec<ChunkData>,
@@ -42,11 +50,11 @@ struct ChunkData {
 }
 
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
-const QUERY: &str = "?populate%5BPages%5D%5Bpopulate%5D%5BContent%5D=true";
+const QUERY: &str = "?populate[Pages][fields][0]=*&populate[Pages][populate][Content]=true&populate[Pages][populate][Chapter][fields][0]=Title&populate[Pages][populate][Chapter][fields][1]=Slug";
 
-pub struct VolumeResponse(Vec<serde_json::Value>);
+pub struct VolumeData(Vec<serde_json::Value>);
 
-pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeResponse> {
+pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeData> {
     let response = ureq::get(format!("{}{}{}", BASE_URL, volume_id, QUERY).as_str())
         .call()
         .map_err(|e| match e {
@@ -62,7 +70,7 @@ pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeResponse> 
     let data = body.get("data").context("no data in volume response")?;
     let attributes = data.get("attributes").context("volume as no attributes")?;
 
-    return Ok(VolumeResponse(
+    return Ok(VolumeData(
         attributes
             .get("Pages")
             .and_then(|p| p.get("data").and_then(|d| d.as_array()))
@@ -89,7 +97,7 @@ where
     })
 }
 
-pub fn clean_pages(resp: VolumeResponse) -> anyhow::Result<Vec<PageData>> {
+pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
     resp.0
         .iter()
         .enumerate()
@@ -108,6 +116,22 @@ pub fn clean_pages(resp: VolumeResponse) -> anyhow::Result<Vec<PageData>> {
                 vec![String::from("summary")]
             } else {
                 Vec::new()
+            };
+
+            let parent_attributes = attributes
+                .get("Chapter")
+                .and_then(|v| v.as_object())
+                .and_then(|v| v.get("data"))
+                .and_then(|v| v.get("attributes"));
+
+            let parent = match parent_attributes {
+                Some(p) => Some(PageParent {
+                    title: get_attribute(p, "Title")
+                        .context(format!("chapter '{}' must set title", &title))?,
+                    slug: get_attribute(p, "Slug")
+                        .context(format!("chapter '{}' must set slug", &title))?,
+                }),
+                None => None,
             };
 
             let default_content = Vec::new();
@@ -180,6 +204,7 @@ pub fn clean_pages(resp: VolumeResponse) -> anyhow::Result<Vec<PageData>> {
                 title,
                 slug,
                 assignments,
+                parent,
                 chunks: chunks.context("failed to parse chunk")?,
                 order: index,
             })
@@ -199,6 +224,7 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
     fm.insert("slug", Frontmatter::Slug(page.slug.as_str()));
     fm.insert("order", Frontmatter::Order(page.order));
     fm.insert("assignments", Frontmatter::Assignments(&page.assignments));
+    fm.insert("parent", Frontmatter::Parent(page.parent.as_ref()));
     fm.insert(
         "chunks",
         Frontmatter::Chunks(
