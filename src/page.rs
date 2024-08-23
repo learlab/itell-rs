@@ -1,4 +1,5 @@
 use crate::frontmatter::{ChunkMeta, ChunkType, Frontmatter, QuestionAnswer};
+use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -256,7 +257,7 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
                 chunk.title,
                 chunk.slug,
                 header_class,
-                chunk.content
+                transform_headings(&chunk.content)
             )
         })
         .collect::<Vec<String>>()
@@ -274,4 +275,18 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
     .context(format!("failed to write to page {}", page.slug))?;
 
     Ok(())
+}
+
+// add custom ids to h3 headings (h2 headings are chunk headers with ids already, and we ignore lower level headings in the page toc)
+fn transform_headings(content: &str) -> String {
+    let re = Regex::new(r"(?m)^### (.+)$").unwrap();
+    let mut slugger = github_slugger::Slugger::default();
+
+    re.replace_all(content, |caps: &regex::Captures| {
+        let heading_text = &caps[1];
+        // Here you would use github-slugger to generate the ID
+        let id = slugger.slug(heading_text);
+        format!("### {} {{#{}}}", heading_text, id)
+    })
+    .to_string()
 }
