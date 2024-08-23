@@ -127,6 +127,10 @@ Look into `output-html`
     - item 3
     ```
 
+- stricter heading levels
+  - all chunk headings should be h2, remove heading level configuration
+  - only h2 and h3 headings will be displayed in table of contents (nothing needs to be changed)
+
 
 ### Optional
 

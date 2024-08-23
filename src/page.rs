@@ -1,11 +1,11 @@
-use crate::frontmatter::{ChunkMeta, ChunkType, Frontmatter, QuestionAnswer};
+use crate::frontmatter::{ChunkMeta, ChunkType, Frontmatter, Heading, QuestionAnswer};
 use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::str::FromStr;
+use std::{collections::BTreeMap, vec};
 use ureq;
 
 use anyhow::{Context, Ok};
@@ -141,7 +141,7 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                 .and_then(|v| v.as_array())
                 .unwrap_or(&default_content);
 
-            let chunks = content
+            let chunks: anyhow::Result<Vec<ChunkData>> = content
                 .iter()
                 .map(|chunk| {
                     let chunk_title: String = get_attribute(chunk, "Header").context(format!(
@@ -199,7 +199,7 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                         chunk_type,
                     })
                 })
-                .collect::<anyhow::Result<Vec<ChunkData>>>();
+                .collect();
 
             Ok(PageData {
                 title,
@@ -210,7 +210,7 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                 order: index,
             })
         })
-        .collect::<anyhow::Result<Vec<PageData>>>()
+        .collect()
 }
 
 pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
@@ -226,42 +226,40 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
     fm.insert("order", Frontmatter::Order(page.order));
     fm.insert("assignments", Frontmatter::Assignments(&page.assignments));
     fm.insert("parent", Frontmatter::Parent(page.parent.as_ref()));
-    fm.insert(
-        "chunks",
-        Frontmatter::Chunks(
-            page.chunks
-                .iter()
-                .map(|c| ChunkMeta::new(c.slug.as_str(), &c.chunk_type))
-                .collect::<Vec<ChunkMeta>>(),
-        ),
-    );
 
     let mut cri = Vec::<&QuestionAnswer>::new();
+    let mut chunks = Vec::<ChunkMeta>::new();
+    let mut page_body = String::new();
 
-    page.chunks.iter().for_each(|chunk| {
+    for chunk in &page.chunks {
+        let mut chunk_headings: Vec<Heading> = vec![];
+        let mut chunk_meta =
+            ChunkMeta::new(chunk.title.as_str(), chunk.slug.as_str(), &chunk.chunk_type);
+
+        // Populate cri
         if let Some(ref item) = chunk.cri {
             cri.push(item);
         }
-    });
+
+        // Generate page_body
+        let header_class = if chunk.show_header { "" } else { " .sr-only" };
+        let content = transform_headings(&chunk.content, &mut chunk_headings);
+
+        chunk_meta.add_headings(chunk_headings);
+        chunks.push(chunk_meta);
+
+        page_body.push_str(&format!(
+            "{} {} {{#{}{}}} \n\n{}\n\n",
+            "#".repeat(chunk.depth),
+            chunk.title,
+            chunk.slug,
+            header_class,
+            content
+        ));
+    }
 
     fm.insert("cri", Frontmatter::CRI(&cri));
-
-    let content_string = page
-        .chunks
-        .iter()
-        .map(|chunk| {
-            let header_class = if chunk.show_header { "" } else { " .sr-only" };
-            format!(
-                "{} {} {{#{}{}}} \n\n{}\n",
-                "#".repeat(chunk.depth),
-                chunk.title,
-                chunk.slug,
-                header_class,
-                transform_headings(&chunk.content)
-            )
-        })
-        .collect::<Vec<String>>()
-        .join("\n");
+    fm.insert("chunks", Frontmatter::Chunks(chunks));
 
     writeln!(
         file,
@@ -270,7 +268,7 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
 
 {}"#,
         serde_yaml_ng::to_string(&fm)?,
-        content_string
+        page_body
     )
     .context(format!("failed to write to page {}", page.slug))?;
 
@@ -278,7 +276,7 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
 }
 
 // add custom ids to h3 headings (h2 headings are chunk headers with ids already, and we ignore lower level headings in the page toc)
-fn transform_headings(content: &str) -> String {
+fn transform_headings(content: &str, headings: &mut Vec<Heading>) -> String {
     let re = Regex::new(r"(?m)^### (.+)$").unwrap();
     let mut slugger = github_slugger::Slugger::default();
 
@@ -286,6 +284,11 @@ fn transform_headings(content: &str) -> String {
         let heading_text = &caps[1];
         // Here you would use github-slugger to generate the ID
         let id = slugger.slug(heading_text);
+        headings.push(Heading {
+            slug: id.clone(),
+            text: heading_text.to_string(),
+            level: 3,
+        });
         format!("### {} {{#{}}}", heading_text, id)
     })
     .to_string()

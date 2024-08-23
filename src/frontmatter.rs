@@ -16,15 +16,33 @@ pub enum Frontmatter<'a> {
 
 #[derive(Serialize, Debug)]
 pub struct ChunkMeta<'a> {
+    title: &'a str,
     slug: &'a str,
     #[serde(rename = "type")]
     chunk_type: &'a ChunkType,
+    headings: Vec<Heading>,
 }
 
 impl<'a> ChunkMeta<'a> {
-    pub fn new(slug: &'a str, chunk_type: &'a ChunkType) -> Self {
-        Self { slug, chunk_type }
+    pub fn new(title: &'a str, slug: &'a str, chunk_type: &'a ChunkType) -> Self {
+        Self {
+            title,
+            slug,
+            chunk_type,
+            headings: vec![],
+        }
     }
+
+    pub fn add_headings(&mut self, headings: Vec<Heading>) {
+        self.headings = headings;
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct Heading {
+    pub level: usize,
+    pub slug: String,
+    pub text: String,
 }
 
 #[derive(Serialize, Debug)]
