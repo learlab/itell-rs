@@ -20,6 +20,7 @@ pub struct ChunkMeta<'a> {
     slug: &'a str,
     #[serde(rename = "type")]
     chunk_type: &'a ChunkType,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     headings: Vec<Heading>,
 }
 
@@ -42,7 +43,7 @@ impl<'a> ChunkMeta<'a> {
 pub struct Heading {
     pub level: usize,
     pub slug: String,
-    pub text: String,
+    pub title: String,
 }
 
 #[derive(Serialize, Debug)]

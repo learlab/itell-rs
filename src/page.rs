@@ -231,7 +231,7 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
     let mut chunks = Vec::<ChunkMeta>::new();
     let mut page_body = String::new();
 
-    for chunk in &page.chunks {
+    page.chunks.iter().for_each(|chunk| {
         let mut chunk_headings: Vec<Heading> = vec![];
         let mut chunk_meta =
             ChunkMeta::new(chunk.title.as_str(), chunk.slug.as_str(), &chunk.chunk_type);
@@ -256,7 +256,7 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
             header_class,
             content
         ));
-    }
+    });
 
     fm.insert("cri", Frontmatter::CRI(&cri));
     fm.insert("chunks", Frontmatter::Chunks(chunks));
@@ -281,15 +281,15 @@ fn transform_headings(content: &str, headings: &mut Vec<Heading>) -> String {
     let mut slugger = github_slugger::Slugger::default();
 
     re.replace_all(content, |caps: &regex::Captures| {
-        let heading_text = &caps[1];
+        let heading_title = &caps[1];
         // Here you would use github-slugger to generate the ID
-        let id = slugger.slug(heading_text);
+        let id = slugger.slug(heading_title);
         headings.push(Heading {
             slug: id.clone(),
-            text: heading_text.to_string(),
+            title: heading_title.to_string(),
             level: 3,
         });
-        format!("### {} {{#{}}}", heading_text, id)
+        format!("### {} {{#{}}}", heading_title, id)
     })
     .to_string()
 }

@@ -72,7 +72,42 @@ Look into `output-html`
 
 ### Required
 
-- components:
+- handle page nesting: we are currently using `Module` and `Chapter` to represent potential nesting structure, this makes it really hard for the frontend to standardize components. Proposed (undecided) changes
+
+  - strapi only allows one level of nesting: a page may only have one single parent. We may still call it `Chapter`, but we won't be having a container for chapters. A page could also have no parent, the following structure is valid
+
+    ```markdown
+    chapter 1
+        - page 1
+        - page 2
+
+    page 3
+
+    chapter 2
+        - page 4
+
+    page 5
+    ```
+
+  - in the case of a textbook that does have multiple levels of nesting, next.js will handle them on the UI level. But single parent is still enforced at the content level. Say the actual book structure is
+
+    ```markdown
+    part 1
+        - module 1
+            - chapter 1
+                - page 1
+                - page 2
+    ```
+
+    Strapi will store it as
+
+    ```markdown
+    chapter 1
+        - page 1
+        - page 2
+    ```
+
+- change component parsing as a new field `MD`:
    - new names:
      - `Sandbox` -> `i-sandbox-js`
      - `Blockquote` -> `i-blockquote`
@@ -130,6 +165,7 @@ Look into `output-html`
 - stricter heading levels
   - all chunk headings should be h2, remove heading level configuration
   - only h2 and h3 headings will be displayed in table of contents (nothing needs to be changed)
+
 
 
 ### Optional
