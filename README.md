@@ -1,3 +1,5 @@
+# iTELL's Rust sdk
+
 Proof-of-concept of extracting content from strapi and parsing them with remark plugins.
 
 ## Refactoring on fetching strapi content

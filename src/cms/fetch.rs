@@ -1,54 +1,14 @@
-use crate::frontmatter::{ChunkMeta, ChunkType, Frontmatter, Heading, QuestionAnswer};
-use regex::Regex;
-use serde::Serialize;
-use serde_json::Value;
-use std::fs::OpenOptions;
-use std::io::Write;
-use std::str::FromStr;
-use std::{collections::BTreeMap, vec};
-use ureq;
-
 use anyhow::{Context, Ok};
+use regex::Regex;
+use serde_json::Value;
+use std::{collections::BTreeMap, str::FromStr};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
-enum RequestError {
-    #[error("HTTP request failed: {0}")]
-    HttpError(#[from] ureq::Error),
-
-    #[error("Failed to read response body: {0}")]
-    IoError(#[from] std::io::Error),
-
-    #[error("Server returned an error: {status}")]
-    ServerError { status: u16 },
-}
-
-#[derive(Debug, Serialize)]
-pub struct PageParent {
-    title: String,
-    slug: String,
-}
-
-#[derive(Debug)]
-pub struct PageData {
-    title: String,
-    slug: String,
-    parent: Option<PageParent>,
-    order: usize,
-    assignments: Vec<String>,
-    chunks: Vec<ChunkData>,
-}
-
-#[derive(Debug)]
-struct ChunkData {
-    title: String,
-    slug: String,
-    depth: usize,
-    content: String,
-    cri: Option<QuestionAnswer>,
-    show_header: bool,
-    chunk_type: ChunkType,
-}
+use super::{
+    chunk::{ChunkData, ChunkType, QuestionAnswer},
+    frontmatter::{ChunkMeta, Frontmatter, Heading},
+    page::{PageData, PageParent},
+};
 
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
 const QUERY: &str = "?populate[Pages][fields][0]=*&populate[Pages][populate][Content]=true&populate[Pages][populate][Chapter][fields][0]=Title&populate[Pages][populate][Chapter][fields][1]=Slug";
@@ -80,24 +40,6 @@ pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeData> {
     ));
 }
 
-fn get_attribute<T>(value: &Value, attribute: &str) -> Option<T>
-where
-    T: FromStr,
-{
-    value.get(attribute).and_then(|v| match v {
-        Value::String(s) => T::from_str(s).ok(),
-        Value::Number(n) => {
-            if let Some(f) = n.as_f64() {
-                T::from_str(&f.to_string()).ok()
-            } else {
-                None
-            }
-        }
-        Value::Bool(b) => T::from_str(&b.to_string()).ok(),
-        _ => None,
-    })
-}
-
 pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
     resp.0
         .iter()
@@ -126,12 +68,12 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                 .and_then(|v| v.get("attributes"));
 
             let parent = match parent_attributes {
-                Some(p) => Some(PageParent {
-                    title: get_attribute(p, "Title")
+                Some(p) => Some(PageParent::new(
+                    get_attribute(p, "Title")
                         .context(format!("chapter '{}' must set title", &title))?,
-                    slug: get_attribute(p, "Slug")
+                    get_attribute(p, "Slug")
                         .context(format!("chapter '{}' must set slug", &title))?,
-                }),
+                )),
                 None => None,
             };
 
@@ -192,10 +134,10 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                     Ok(ChunkData {
                         title: chunk_title,
                         slug: chunk_slug,
-                        content,
                         depth,
-                        show_header,
+                        content,
                         cri,
+                        show_header,
                         chunk_type,
                     })
                 })
@@ -204,22 +146,16 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
             Ok(PageData {
                 title,
                 slug,
-                assignments,
                 parent,
-                chunks: chunks.context("failed to parse chunk")?,
                 order: index,
+                assignments,
+                chunks: chunks.context("failed to parse chunk")?,
             })
         })
         .collect()
 }
 
-pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
-    let mut file = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(format!("{}/{}.md", output_dir, page.slug))
-        .unwrap();
-
+pub fn serialize_page(page: &PageData) -> anyhow::Result<String> {
     let mut fm: BTreeMap<&str, Frontmatter> = BTreeMap::new();
     fm.insert("title", Frontmatter::Title(page.title.as_str()));
     fm.insert("slug", Frontmatter::Slug(page.slug.as_str()));
@@ -261,20 +197,33 @@ pub fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
     fm.insert("cri", Frontmatter::CRI(&cri));
     fm.insert("chunks", Frontmatter::Chunks(chunks));
 
-    writeln!(
-        file,
+    Ok(format!(
         r#"---
 {}---
 
 {}"#,
         serde_yaml_ng::to_string(&fm)?,
         page_body
-    )
-    .context(format!("failed to write to page {}", page.slug))?;
-
-    Ok(())
+    ))
 }
 
+fn get_attribute<T>(value: &Value, attribute: &str) -> Option<T>
+where
+    T: FromStr,
+{
+    value.get(attribute).and_then(|v| match v {
+        Value::String(s) => T::from_str(s).ok(),
+        Value::Number(n) => {
+            if let Some(f) = n.as_f64() {
+                T::from_str(&f.to_string()).ok()
+            } else {
+                None
+            }
+        }
+        Value::Bool(b) => T::from_str(&b.to_string()).ok(),
+        _ => None,
+    })
+}
 // add custom ids to h3 headings (h2 headings are chunk headers with ids already, and we ignore lower level headings in the page toc)
 fn transform_headings(content: &str, headings: &mut Vec<Heading>) -> String {
     let re = Regex::new(r"(?m)^### (.+)$").unwrap();
@@ -292,4 +241,16 @@ fn transform_headings(content: &str, headings: &mut Vec<Heading>) -> String {
         format!("### {} {{#{}}}", heading_title, id)
     })
     .to_string()
+}
+
+#[derive(Error, Debug)]
+enum RequestError {
+    #[error("HTTP request failed: {0}")]
+    HttpError(#[from] ureq::Error),
+
+    #[error("Failed to read response body: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("Server returned an error: {status}")]
+    ServerError { status: u16 },
 }

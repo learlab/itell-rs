@@ -1,6 +1,9 @@
 use serde::Serialize;
 
-use crate::page::PageParent;
+use super::{
+    chunk::{ChunkType, QuestionAnswer},
+    page::PageParent,
+};
 
 #[derive(Serialize, Debug)]
 #[serde(untagged)]
@@ -44,19 +47,4 @@ pub struct Heading {
     pub level: usize,
     pub slug: String,
     pub title: String,
-}
-
-#[derive(Serialize, Debug)]
-pub enum ChunkType {
-    #[serde(rename = "regular")]
-    Regular,
-    #[serde(rename = "plain")]
-    Plain,
-}
-
-#[derive(Serialize, Debug)]
-pub struct QuestionAnswer {
-    pub question: String,
-    pub answer: String,
-    pub slug: String,
 }
