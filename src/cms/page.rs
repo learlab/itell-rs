@@ -1,5 +1,6 @@
-use super::chunk::ChunkData;
 use serde::Serialize;
+
+use super::ChunkData;
 
 #[derive(Debug, Serialize)]
 pub struct PageParent {

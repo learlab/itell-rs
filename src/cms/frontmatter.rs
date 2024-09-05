@@ -1,9 +1,6 @@
 use serde::Serialize;
 
-use super::{
-    chunk::{ChunkType, QuestionAnswer},
-    page::PageParent,
-};
+use super::{ChunkType, PageParent, QuestionAnswer};
 
 #[derive(Serialize, Debug)]
 #[serde(untagged)]

@@ -2,6 +2,8 @@
 name = "itell"
 version = "0.1.0"
 edition = "2021"
+description = "iTELL's Rust SDK"
+license = "MIT"
 
 [dependencies]
 anyhow = "1.0.86"

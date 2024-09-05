@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { glob } from "fast-glob";
+import rehypeFormat from "rehype-format";
 import rehypeRaw from "rehype-raw";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
@@ -20,6 +21,7 @@ const rehypePlugins = [
 	rehypeFrontmatter,
 	rehypeWrapHeadingSection,
 	rehypeAddCri,
+	rehypeFormat,
 ];
 const processor = unified()
 	.use(remarkParse)
