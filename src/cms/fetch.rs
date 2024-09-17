@@ -4,14 +4,16 @@ use serde_json::Value;
 use std::{collections::BTreeMap, str::FromStr};
 use thiserror::Error;
 
+use crate::cms::page::QuizAnswerItem;
+
 use super::{
     chunk::{ChunkData, ChunkType, QuestionAnswer},
     frontmatter::{ChunkMeta, Frontmatter, Heading},
-    page::{PageData, PageParent},
+    page::{PageData, PageParent, QuizItem},
 };
 
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
-const QUERY: &str = "?populate[Pages][fields][0]=*&populate[Pages][populate][Content]=true&populate[Pages][populate][Chapter][fields][0]=Title&populate[Pages][populate][Chapter][fields][1]=Slug";
+const QUERY: &str = "?populate[Pages][fields][0]=*&populate[Pages][populate][Content]=true&populate[Pages][populate][Chapter][fields][0]=Title&populate[Pages][populate][Chapter][fields][1]=Slug&populate[Pages][populate][Quiz][populate][Questions][populate][Answers]=true";
 
 pub struct VolumeData(Vec<serde_json::Value>);
 
@@ -77,6 +79,10 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                 None => None,
             };
 
+            // Parse quiz
+            let quiz = parse_quiz(attributes.get("Quiz"))
+                .context(format!("parse quiz for page '{}'", &title))?;
+
             let default_content = Vec::new();
             let content = attributes
                 .get("Content")
@@ -85,7 +91,8 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
 
             let chunks: anyhow::Result<Vec<ChunkData>> = content
                 .iter()
-                .map(|chunk| {
+                .enumerate()
+                .map(|(index, chunk)| {
                     let chunk_title: String = get_attribute(chunk, "Header").context(format!(
                         "chunk '{}' in page '{}' must set Header",
                         index, &title
@@ -95,8 +102,8 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                         index, &title
                     ))?;
 
-                    let content: String = get_attribute(chunk, "MDX").context(format!(
-                        "chunk '{}' in page '{}' must set MDX",
+                    let content: String = get_attribute(chunk, "MD").context(format!(
+                        "chunk '{}' in page '{}' must set MD",
                         index, &title
                     ))?;
 
@@ -149,6 +156,7 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                 parent,
                 order: index,
                 assignments,
+                quiz,
                 chunks: chunks.context("failed to parse chunk")?,
             })
         })
@@ -162,6 +170,7 @@ pub fn serialize_page(page: &PageData) -> anyhow::Result<String> {
     fm.insert("order", Frontmatter::Order(page.order));
     fm.insert("assignments", Frontmatter::Assignments(&page.assignments));
     fm.insert("parent", Frontmatter::Parent(page.parent.as_ref()));
+    fm.insert("quiz", Frontmatter::Quiz(page.quiz.as_ref()));
 
     let mut cri = Vec::<&QuestionAnswer>::new();
     let mut chunks = Vec::<ChunkMeta>::new();
@@ -205,6 +214,54 @@ pub fn serialize_page(page: &PageData) -> anyhow::Result<String> {
         serde_yaml_ng::to_string(&fm)?,
         page_body
     ))
+}
+
+fn parse_quiz(quiz: Option<&Value>) -> anyhow::Result<Option<Vec<QuizItem>>> {
+    if let Some(data) = quiz
+        .and_then(|q| q.get("data"))
+        .and_then(|q| q.get("attributes"))
+        .and_then(|a| a.get("Questions"))
+        .and_then(|q| q.as_array())
+    {
+        let items: anyhow::Result<Vec<QuizItem>> = data
+            .iter()
+            .map(|q| {
+                let id = get_attribute::<String>(q, "id").context("quiz question has no id")?;
+                let question = get_attribute::<String>(q, "Question")
+                    .context(format!("quiz question '{}' has no question", id))?;
+                let answers = q
+                    .get("Answers")
+                    .and_then(|a| a.as_array())
+                    .context(format!("quiz question '{}' has no answers", id))?;
+
+                let quiz_answers: anyhow::Result<Vec<QuizAnswerItem>> = answers
+                    .iter()
+                    .map(|a| {
+                        let answer_id = get_attribute::<String>(a, "id")
+                            .context(format!("in quiz question '{}', one answer has no id", id))?;
+                        let answer = get_attribute::<String>(a, "Text").context(format!(
+                            "in quiz question '{}', answer '{}' has no text",
+                            id, answer_id
+                        ))?;
+                        let correct = get_attribute::<bool>(a, "IsCorrect").context(format!(
+                            "in quiz question '{}', answer {} has no IsCorrect flag",
+                            id, answer_id
+                        ))?;
+                        Ok(QuizAnswerItem { answer, correct })
+                    })
+                    .collect();
+
+                Ok(QuizItem {
+                    question,
+                    answers: quiz_answers?,
+                })
+            })
+            .collect();
+
+        Ok(Some(items?))
+    } else {
+        Ok(None)
+    }
 }
 
 fn get_attribute<T>(value: &Value, attribute: &str) -> Option<T>

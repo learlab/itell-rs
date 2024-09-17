@@ -30,6 +30,21 @@ pub struct PageData {
     /// evaluation assignments, ["summary", "quiz", ...]
     pub assignments: Vec<String>,
 
+    // quiz
+    pub quiz: Option<Vec<QuizItem>>,
+
     /// content chunks
     pub chunks: Vec<ChunkData>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuizItem {
+    pub question: String,
+    pub answers: Vec<QuizAnswerItem>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuizAnswerItem {
+    pub answer: String,
+    pub correct: bool,
 }

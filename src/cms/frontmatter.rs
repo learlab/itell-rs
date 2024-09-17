@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::{ChunkType, PageParent, QuestionAnswer};
+use super::{page::QuizItem, ChunkType, PageParent, QuestionAnswer};
 
 #[derive(Serialize, Debug)]
 #[serde(untagged)]
@@ -12,6 +12,7 @@ pub enum Frontmatter<'a> {
     Order(usize),
     Chunks(Vec<ChunkMeta<'a>>),
     CRI(&'a [&'a QuestionAnswer]),
+    Quiz(Option<&'a Vec<QuizItem>>),
 }
 
 #[derive(Serialize, Debug)]

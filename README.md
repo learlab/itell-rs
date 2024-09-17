@@ -11,7 +11,7 @@ Goal:
 - Use markdown instead of mdx, this can prevent unexpected js injection and weird escape behavior. At run time, next.js will only transform certain tags into custom components.
 
 ```rust
-cargo run <volume_id>
+cargo run --bin fetch_volume <volume_id>
 ```
 
 This generates one markdown document per page in the `output` folder. Example:
