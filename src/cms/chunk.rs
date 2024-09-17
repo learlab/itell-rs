@@ -17,6 +17,8 @@ pub enum ChunkType {
     Regular,
     #[serde(rename = "plain")]
     Plain,
+    #[serde(rename = "video")]
+    Video,
 }
 
 #[derive(Serialize, Debug)]

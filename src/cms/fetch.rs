@@ -4,12 +4,10 @@ use serde_json::Value;
 use std::{collections::BTreeMap, str::FromStr};
 use thiserror::Error;
 
-use crate::cms::page::QuizAnswerItem;
-
 use super::{
     chunk::{ChunkData, ChunkType, QuestionAnswer},
     frontmatter::{ChunkMeta, Frontmatter, Heading},
-    page::{PageData, PageParent, QuizItem},
+    page::{PageData, PageParent, QuizAnswerItem, QuizItem},
 };
 
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
@@ -93,6 +91,60 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                 .iter()
                 .enumerate()
                 .map(|(index, chunk)| {
+                    let component: Option<String> = get_attribute(chunk, "__component");
+                    let chunk_type = component.map_or(ChunkType::Regular, |c| {
+                        if c == "page.plain-chunk" {
+                            ChunkType::Plain
+                        } else if c == "page.video" {
+                            ChunkType::Video
+                        } else {
+                            ChunkType::Regular
+                        }
+                    });
+
+                    if matches!(chunk_type, ChunkType::Video) {
+                        let title: String = get_attribute(chunk, "Title").context(format!(
+                            "video chunk '{}' in page '{}' must set Title",
+                            &title, index,
+                        ))?;
+                        let video_url: String = get_attribute(chunk, "URL").context(format!(
+                            "video chunk '{}' in page '{}' must set VideoUrl",
+                            &title, index,
+                        ))?;
+
+                        let chunk_slug: String = get_attribute(chunk, "Slug").context(format!(
+                            "video chunk '{}' in page '{}' must set Slug",
+                            &title, index,
+                        ))?;
+
+                        let question: Option<String> = get_attribute(chunk, "Question");
+                        let answer: Option<String> = get_attribute(chunk, "ConstructedResponse");
+
+                        let cri = match (question, answer) {
+                            (Some(question), Some(answer)) => Some(QuestionAnswer {
+                                slug: chunk_slug.clone(),
+                                question,
+                                answer,
+                            }),
+                            _ => None,
+                        };
+
+                        let description: String =
+                            get_attribute::<String>(chunk, "Description").unwrap_or_default();
+                        let content =
+                            format!("{description}\n\n<i-youtube-video src=\"{}\" />", video_url);
+
+                        return Ok(ChunkData {
+                            title,
+                            slug: chunk_slug.clone(),
+                            depth: 2,
+                            content,
+                            cri,
+                            show_header: true,
+                            chunk_type,
+                        });
+                    }
+
                     let chunk_title: String = get_attribute(chunk, "Header").context(format!(
                         "chunk '{}' in page '{}' must set Header",
                         index, &title
@@ -111,15 +163,6 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
 
                     let question: Option<String> = get_attribute(chunk, "Question");
                     let answer: Option<String> = get_attribute(chunk, "ConstructedResponse");
-
-                    let component: Option<String> = get_attribute(chunk, "__component");
-                    let chunk_type = component.map_or(ChunkType::Regular, |c| {
-                        if c == "page.plain-chunk" {
-                            ChunkType::Plain
-                        } else {
-                            ChunkType::Regular
-                        }
-                    });
 
                     let cri = match (question, answer) {
                         (Some(question), Some(answer)) => Some(QuestionAnswer {
@@ -288,7 +331,6 @@ fn transform_headings(content: &str, headings: &mut Vec<Heading>) -> String {
 
     re.replace_all(content, |caps: &regex::Captures| {
         let heading_title = &caps[1];
-        // Here you would use github-slugger to generate the ID
         let id = slugger.slug(heading_title);
         headings.push(Heading {
             slug: id.clone(),
