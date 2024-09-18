@@ -47,10 +47,10 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
         .map(|(index, page)| {
             let attributes = page.get("attributes").context("page has no attributes")?;
 
-            let title = get_attribute(attributes, "Title")
+            let title: String = get_attribute(attributes, "Title")
                 .context(format!("page '{}' must set title", index))?;
 
-            let slug = get_attribute(attributes, "Slug")
+            let slug: String = get_attribute(attributes, "Slug")
                 .context(format!("page '{}' must set slug", &title))?;
             let has_summary: bool = get_attribute(attributes, "HasSummary")
                 .context(format!("page '{}' must set HasSummary", &title))?;
@@ -78,8 +78,8 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
             };
 
             // Parse quiz
-            let quiz = parse_quiz(attributes.get("Quiz"))
-                .context(format!("parse quiz for page '{}'", &title))?;
+            let quiz: Option<Vec<QuizItem>> =
+                parse_quiz(attributes).context(format!("parse quiz for page '{}'", &title))?;
 
             let default_content = Vec::new();
             let content = attributes
@@ -103,46 +103,7 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                     });
 
                     if matches!(chunk_type, ChunkType::Video) {
-                        let title: String = get_attribute(chunk, "Title").context(format!(
-                            "video chunk '{}' in page '{}' must set Title",
-                            &title, index,
-                        ))?;
-                        let video_url: String = get_attribute(chunk, "URL").context(format!(
-                            "video chunk '{}' in page '{}' must set VideoUrl",
-                            &title, index,
-                        ))?;
-
-                        let chunk_slug: String = get_attribute(chunk, "Slug").context(format!(
-                            "video chunk '{}' in page '{}' must set Slug",
-                            &title, index,
-                        ))?;
-
-                        let question: Option<String> = get_attribute(chunk, "Question");
-                        let answer: Option<String> = get_attribute(chunk, "ConstructedResponse");
-
-                        let cri = match (question, answer) {
-                            (Some(question), Some(answer)) => Some(QuestionAnswer {
-                                slug: chunk_slug.clone(),
-                                question,
-                                answer,
-                            }),
-                            _ => None,
-                        };
-
-                        let description: String =
-                            get_attribute::<String>(chunk, "Description").unwrap_or_default();
-                        let content =
-                            format!("{description}\n\n<i-youtube-video src=\"{}\" />", video_url);
-
-                        return Ok(ChunkData {
-                            title,
-                            slug: chunk_slug.clone(),
-                            depth: 2,
-                            content,
-                            cri,
-                            show_header: true,
-                            chunk_type,
-                        });
+                        return parse_video(chunk, &title);
                     }
 
                     let chunk_title: String = get_attribute(chunk, "Header").context(format!(
@@ -194,7 +155,7 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                 .collect();
 
             Ok(PageData {
-                title,
+                title: title.to_string(),
                 slug,
                 parent,
                 order: index,
@@ -259,8 +220,58 @@ pub fn serialize_page(page: &PageData) -> anyhow::Result<String> {
     ))
 }
 
-fn parse_quiz(quiz: Option<&Value>) -> anyhow::Result<Option<Vec<QuizItem>>> {
+fn parse_video(attributes: &Value, page_title: &str) -> anyhow::Result<ChunkData> {
+    let title: String = get_attribute(attributes, "Title").context(format!(
+        "video chunk in page '{}' must set Title",
+        page_title,
+    ))?;
+    let video_url: String = get_attribute(attributes, "URL")
+        .context(format!("video chunk in page '{}' must set URL", page_title))?;
+
+    let chunk_slug: String = get_attribute(attributes, "Slug").context(format!(
+        "video chunk '{}' in page '{}' must set Slug",
+        &title, page_title,
+    ))?;
+
+    let question: Option<String> = get_attribute(attributes, "Question");
+    let answer: Option<String> = get_attribute(attributes, "ConstructedResponse");
+
+    let cri = match (question, answer) {
+        (Some(question), Some(answer)) => Some(QuestionAnswer {
+            slug: chunk_slug.clone(),
+            question,
+            answer,
+        }),
+        _ => None,
+    };
+
+    let video_id = video_url
+        .split("v=")
+        .nth(1)
+        .and_then(|s| s.split('&').next())
+        .unwrap_or_default();
+
+    let description: String =
+        get_attribute::<String>(attributes, "Description").unwrap_or_default();
+    let content = format!(
+        "{description}\n\n<i-youtube videoid=\"{}\" height={{400}} width=\"100%\" />",
+        video_id
+    );
+
+    return Ok(ChunkData {
+        title,
+        slug: chunk_slug.clone(),
+        depth: 2,
+        content,
+        cri,
+        show_header: true,
+        chunk_type: ChunkType::Video,
+    });
+}
+
+fn parse_quiz(quiz: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
     if let Some(data) = quiz
+        .get("Quiz")
         .and_then(|q| q.get("data"))
         .and_then(|q| q.get("attributes"))
         .and_then(|a| a.get("Questions"))
