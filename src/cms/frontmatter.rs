@@ -7,6 +7,7 @@ use super::{page::QuizItem, ChunkType, PageParent, QuestionAnswer};
 pub enum Frontmatter<'a> {
     Title(&'a str),
     Slug(&'a str),
+    NextSlug(Option<&'a str>),
     Assignments(&'a [String]),
     Parent(Option<&'a PageParent>),
     Order(usize),

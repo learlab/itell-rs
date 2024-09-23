@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::thread::current;
 use std::{
     env,
     fs::{self, OpenOptions},
@@ -49,8 +50,13 @@ fn main() -> anyhow::Result<()> {
 
     create_output_dir(&config.output_dir).context("failed to create output directory")?;
 
-    for page in pages.iter() {
-        if let Err(e) = write_page(page, &config.output_dir) {
+    for (idx, page) in pages.iter().enumerate() {
+        let next_slug = if idx == pages.len() - 1 {
+            None
+        } else {
+            Some(pages[idx + 1].slug.as_str())
+        };
+        if let Err(e) = write_page(page, &config.output_dir, next_slug) {
             eprintln!("Error writing page {}: {}", page.slug, e);
             return Err(e);
         }
@@ -65,14 +71,14 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn write_page(page: &PageData, output_dir: &str) -> anyhow::Result<()> {
+fn write_page(page: &PageData, output_dir: &str, next_slug: Option<&str>) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
         .create_new(true)
         .write(true)
         .open(format!("{}/{}.md", output_dir, page.slug))
         .context(format!("failed to open file for {}", page.slug))?;
 
-    let content = serialize_page(page).context("failed to serialize page")?;
+    let content = serialize_page(page, next_slug).context("failed to serialize page")?;
     write!(file, "{}", content).context("failed to write page")?;
 
     Ok(())

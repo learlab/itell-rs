@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use super::{
     chunk::{ChunkData, ChunkType, QuestionAnswer},
-    frontmatter::{ChunkMeta, Frontmatter, Heading},
+    frontmatter::{self, ChunkMeta, Frontmatter, Heading},
     page::{PageData, PageParent, QuizAnswerItem, QuizItem},
 };
 
@@ -167,10 +167,11 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
         .collect()
 }
 
-pub fn serialize_page(page: &PageData) -> anyhow::Result<String> {
+pub fn serialize_page(page: &PageData, next_slug: Option<&str>) -> anyhow::Result<String> {
     let mut fm: BTreeMap<&str, Frontmatter> = BTreeMap::new();
     fm.insert("title", Frontmatter::Title(page.title.as_str()));
     fm.insert("slug", Frontmatter::Slug(page.slug.as_str()));
+    fm.insert("next_slug", Frontmatter::NextSlug(next_slug));
     fm.insert("order", Frontmatter::Order(page.order));
     fm.insert("assignments", Frontmatter::Assignments(&page.assignments));
     fm.insert("parent", Frontmatter::Parent(page.parent.as_ref()));
@@ -254,7 +255,7 @@ fn parse_video(attributes: &Value, page_title: &str) -> anyhow::Result<ChunkData
     let description: String =
         get_attribute::<String>(attributes, "Description").unwrap_or_default();
     let content = format!(
-        "{description}\n\n<i-youtube videoid=\"{}\" height={{400}} width=\"100%\" />",
+        "{description}\n\n<i-youtube videoid=\"{}\" height={{400}} width=\"100%\" >\n\n</i-youtube>\n\n",
         video_id
     );
 
