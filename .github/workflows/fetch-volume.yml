@@ -41,8 +41,6 @@ jobs:
           path: "itell-strapi-demo"
           token: ${{ secrets.GH_TOKEN }}
 
-      - run: ls -la
-
       - name: Copy generated content
         run: |
           cp -R ./output/* ./itell-strapi-demo/apps/research-methods-in-psychology/content/textbook/
