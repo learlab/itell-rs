@@ -1,0 +1,52 @@
+name: Fetch Volume
+
+# on:
+#   workflow_dispatch:
+#   schedule:
+#     - cron: "0 0 * * *" # Run daily at midnight UTC
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  fetch-volume:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Build fetch_volume binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --bin fetch_volume
+
+      - name: Run fetch_volume
+        run: ./target/release/fetch_volume 9
+
+      - name: Checkout itell-strapi-demo repository
+        uses: actions/checkout@v3
+        with:
+          repository: "learlab/itell-strapi-demo"
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Copy generated content
+        run: |
+          cp -R ./output/* ./itell-strapi-demo/apps/research-methods-in-psychology/content/textbook/
+
+      - name: Commit and push changes
+        run: |
+          cd itell-strapi-demo
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit -m "Update content from fetch_volume" || echo "No changes to commit"
+          git push

@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::thread::current;
 use std::{
     env,
     fs::{self, OpenOptions},
@@ -46,7 +45,7 @@ fn main() -> anyhow::Result<()> {
 
     let volume =
         itell::cms::get_pages_by_volume_id(config.volume_id).context("failed to fetch volume")?;
-    let pages = itell::cms::clean_pages(volume).context("failed to clean pages")?;
+    let pages = itell::cms::collect_pages(volume).context("failed to collect pages")?;
 
     create_output_dir(&config.output_dir).context("failed to create output directory")?;
 

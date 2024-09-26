@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use super::{
     chunk::{ChunkData, ChunkType, QuestionAnswer},
-    frontmatter::{self, ChunkMeta, Frontmatter, Heading},
+    frontmatter::{ChunkMeta, Frontmatter, Heading},
     page::{PageData, PageParent, QuizAnswerItem, QuizItem},
 };
 
@@ -40,7 +40,7 @@ pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeData> {
     ));
 }
 
-pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
+pub fn collect_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
     resp.0
         .iter()
         .enumerate()
@@ -114,7 +114,6 @@ pub fn clean_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
                         "chunk '{}' in page '{}' must set Slug",
                         index, &title
                     ))?;
-
                     let content: String = get_attribute(chunk, "MD").context(format!(
                         "chunk '{}' in page '{}' must set MD",
                         index, &title
@@ -222,8 +221,8 @@ pub fn serialize_page(page: &PageData, next_slug: Option<&str>) -> anyhow::Resul
 }
 
 fn parse_video(attributes: &Value, page_title: &str) -> anyhow::Result<ChunkData> {
-    let title: String = get_attribute(attributes, "Title").context(format!(
-        "video chunk in page '{}' must set Title",
+    let title: String = get_attribute(attributes, "Header").context(format!(
+        "video chunk in page '{}' must set Header",
         page_title,
     ))?;
     let video_url: String = get_attribute(attributes, "URL")
