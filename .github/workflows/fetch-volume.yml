@@ -30,13 +30,16 @@ jobs:
           args: --release --bin fetch_volume
 
       - name: Run fetch_volume
-        run: ./target/release/fetch_volume 9
+        run: ./target/release/fetch_volume 9 output
 
       - name: Checkout itell-strapi-demo repository
         uses: actions/checkout@v3
         with:
           repository: "learlab/itell-strapi-demo"
+          path: "itell-strapi-demo"
           token: ${{ secrets.GH_TOKEN }}
+
+      - run: ls -la
 
       - name: Copy generated content
         run: |
