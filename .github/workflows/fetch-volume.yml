@@ -1,14 +1,9 @@
 name: Fetch Volume
 
-# on:
-#   workflow_dispatch:
-#   schedule:
-#     - cron: "0 0 * * *" # Run daily at midnight UTC
-
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # Run daily at midnight UTC
 
 jobs:
   fetch-volume:
