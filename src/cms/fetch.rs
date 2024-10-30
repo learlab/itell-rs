@@ -13,9 +13,14 @@ use super::{
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
 const QUERY: &str = "?populate[Pages][fields][0]=*&populate[Pages][populate][Content]=true&populate[Pages][populate][Chapter][fields][0]=Title&populate[Pages][populate][Chapter][fields][1]=Slug&populate[Pages][populate][Quiz][populate][Questions][populate][Answers]=true";
 
-pub struct VolumeData(Vec<serde_json::Value>);
+pub struct VolumeData {
+    pub title: String,
+    pub description: String,
+    pub slug: String,
+    pages: Vec<serde_json::Value>,
+}
 
-pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeData> {
+pub fn get_volume_data(volume_id: i32) -> anyhow::Result<VolumeData> {
     let response = ureq::get(format!("{}{}{}", BASE_URL, volume_id, QUERY).as_str())
         .call()
         .map_err(|e| match e {
@@ -31,17 +36,21 @@ pub fn get_pages_by_volume_id(volume_id: i32) -> anyhow::Result<VolumeData> {
     let data = body.get("data").context("no data in volume response")?;
     let attributes = data.get("attributes").context("volume as no attributes")?;
 
-    return Ok(VolumeData(
-        attributes
+    return Ok(VolumeData {
+        title: get_attribute(attributes, "Title").context("volume must set title")?,
+        description: get_attribute(attributes, "Description")
+            .context("volume must set description")?,
+        slug: get_attribute(attributes, "Slug").context("volume must set slug")?,
+        pages: attributes
             .get("Pages")
             .and_then(|p| p.get("data").and_then(|d| d.as_array()))
             .context("no pages in volume response")?
             .to_owned(),
-    ));
+    });
 }
 
-pub fn collect_pages(resp: VolumeData) -> anyhow::Result<Vec<PageData>> {
-    resp.0
+pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
+    resp.pages
         .iter()
         .enumerate()
         .map(|(index, page)| {

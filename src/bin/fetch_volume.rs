@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::{
     env,
@@ -5,11 +6,11 @@ use std::{
 };
 
 use anyhow::Context;
-use itell::cms::{serialize_page, PageData};
+use itell::cms::{serialize_page, PageData, VolumeData};
 
 const BOLD: &str = "\x1b[1m";
 const RESET: &str = "\x1b[0m";
-const DEFAULT_OUTPUT_DIR: &str = "output";
+const DEFAULT_OUTPUT_DIR: &str = "output/textbook";
 
 pub struct Config {
     pub volume_id: i32,
@@ -43,11 +44,12 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    let volume =
-        itell::cms::get_pages_by_volume_id(config.volume_id).context("failed to fetch volume")?;
-    let pages = itell::cms::collect_pages(volume).context("failed to collect pages")?;
+    let volume = itell::cms::get_volume_data(config.volume_id).context("failed to fetch volume")?;
+    let pages = itell::cms::collect_pages(&volume).context("failed to collect pages")?;
 
     create_output_dir(&config.output_dir).context("failed to create output directory")?;
+    create_volume_metadata(&volume, &config.output_dir)
+        .context("failed to create volume metadata")?;
 
     for (idx, page) in pages.iter().enumerate() {
         let next_slug = if idx == pages.len() - 1 {
@@ -55,11 +57,18 @@ fn main() -> anyhow::Result<()> {
         } else {
             Some(pages[idx + 1].slug.as_str())
         };
-        if let Err(e) = write_page(page, &config.output_dir, next_slug) {
+        if let Err(e) = create_page(page, &config.output_dir, next_slug) {
             eprintln!("Error writing page {}: {}", page.slug, e);
             return Err(e);
         }
     }
+
+    println!("Fetched volume metadata\n");
+    println!("---");
+    println!("title: {}", volume.title);
+    println!("description: {}", volume.description);
+    println!("slug: {}", volume.slug);
+    println!("---\n");
 
     println!(
         "created {BOLD}{}{RESET} pages in {BOLD}{}{RESET}",
@@ -70,7 +79,25 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn write_page(page: &PageData, output_dir: &str, next_slug: Option<&str>) -> anyhow::Result<()> {
+fn create_volume_metadata(volume: &VolumeData, output_dir: &str) -> anyhow::Result<()> {
+    let mut file = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(format!("{}/volume.yaml", output_dir))
+        .context("failed to open file for volume.toml")?;
+
+    let mut map = BTreeMap::new();
+    map.insert("title", volume.title.as_str());
+    map.insert("slug", volume.slug.as_str());
+    map.insert("description", volume.description.as_str());
+
+    let content = serde_yaml_ng::to_string(&map).context("failed to serialize volume metadata")?;
+    write!(file, "{}", content).context("failed to write volume metadata")?;
+
+    Ok(())
+}
+
+fn create_page(page: &PageData, output_dir: &str, next_slug: Option<&str>) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
         .create_new(true)
         .write(true)
