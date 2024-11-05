@@ -187,7 +187,7 @@ pub fn serialize_page(page: &PageData, next_slug: Option<&str>) -> anyhow::Resul
 
     let mut cri = Vec::<&QuestionAnswer>::new();
     let mut chunks = Vec::<ChunkMeta>::new();
-    let mut page_body = String::new();
+    let mut page_body = String::with_capacity(800 * page.chunks.len());
 
     page.chunks.iter().for_each(|chunk| {
         let mut chunk_headings: Vec<Heading> = vec![];
@@ -201,11 +201,10 @@ pub fn serialize_page(page: &PageData, next_slug: Option<&str>) -> anyhow::Resul
 
         // Generate page_body
         let header_class = if chunk.show_header { "" } else { " .sr-only" };
-        let content = transform_headings(&chunk.content, &mut chunk_headings);
+        let content = transform_content(&chunk.content, &mut chunk_headings);
 
         chunk_meta.add_headings(chunk_headings);
         chunks.push(chunk_meta);
-
         page_body.push_str(&format!(
             "{} {} {{#{}{}}} \n\n{}\n\n",
             "#".repeat(chunk.depth),
@@ -345,21 +344,22 @@ where
     })
 }
 // add custom ids to h3 headings (h2 headings are chunk headers with ids already, and we ignore lower level headings in the page toc)
-fn transform_headings(content: &str, headings: &mut Vec<Heading>) -> String {
-    let re = Regex::new(r"(?m)^### (.+)$").unwrap();
+fn transform_content(content: &str, headings: &mut Vec<Heading>) -> String {
+    let heading_regex = Regex::new(r"(?m)^### (.+)$").unwrap();
     let mut slugger = github_slugger::Slugger::default();
 
-    re.replace_all(content, |caps: &regex::Captures| {
-        let heading_title = &caps[1];
-        let id = slugger.slug(heading_title);
-        headings.push(Heading {
-            slug: id.clone(),
-            title: heading_title.to_string(),
-            level: 3,
-        });
-        format!("### {} {{#{}}}", heading_title, id)
-    })
-    .to_string()
+    heading_regex
+        .replace_all(content, |caps: &regex::Captures| {
+            let heading_title = &caps[1];
+            let id = slugger.slug(heading_title);
+            headings.push(Heading {
+                slug: id.clone(),
+                title: heading_title.to_string(),
+                level: 3,
+            });
+            format!("### {} {{#{}}}", heading_title, id)
+        })
+        .to_string()
 }
 
 #[derive(Error, Debug)]
