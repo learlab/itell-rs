@@ -1,4 +1,4 @@
-name: Fetch Volume
+name: Update Demo Volume
 
 on:
   workflow_dispatch:
@@ -27,18 +27,18 @@ jobs:
           args: --release --bin fetch_volume
 
       - name: Run fetch_volume
-        run: ./target/release/fetch_volume 9 output
+        run: ./target/release/fetch_volume nhm9t3owr7ze7ij01uduaiop output
 
       - name: Checkout itell-strapi-demo repository
         uses: actions/checkout@v4
         with:
-          repository: "learlab/itell-strapi-demo"
-          path: "itell-strapi-demo"
+          repository: "learlab/itell"
+          path: "itell"
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Copy generated content
         run: |
-          cp -R ./output/* ./itell-strapi-demo/apps/research-methods-in-psychology/content/textbook/
+          cp -R ./output/* ./itell/apps/demo/content/textbook/
 
       - name: Commit and push changes
         run: |

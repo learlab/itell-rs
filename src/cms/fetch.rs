@@ -11,39 +11,40 @@ use super::{
 };
 
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
-const QUERY: &str = "?populate[Pages][fields][0]=*&populate[Pages][populate][Content]=true&populate[Pages][populate][Chapter][fields][0]=Title&populate[Pages][populate][Chapter][fields][1]=Slug&populate[Pages][populate][Quiz][populate][Questions][populate][Answers]=true";
+const QUERY: &str = "?populate%5BPages%5D%5Bfields%5D%5B0%5D=%2A&populate%5BPages%5D%5Bpopulate%5D%5BContent%5D=true&populate%5BPages%5D%5Bpopulate%5D%5BChapter%5D%5Bfields%5D%5B0%5D=Title&populate%5BPages%5D%5Bpopulate%5D%5BChapter%5D%5Bfields%5D%5B1%5D=Slug&populate%5BPages%5D%5Bpopulate%5D%5BQuiz%5D%5Bpopulate%5D%5BQuestions%5D%5Bpopulate%5D=%2A";
 
 pub struct VolumeData {
     pub title: String,
     pub description: String,
     pub slug: String,
+    pub free_pages: Vec<String>,
     pages: Vec<serde_json::Value>,
 }
 
-pub fn get_volume_data(volume_id: i32) -> anyhow::Result<VolumeData> {
+pub fn get_volume_data(volume_id: &str) -> anyhow::Result<VolumeData> {
     let response = ureq::get(format!("{}{}{}", BASE_URL, volume_id, QUERY).as_str())
         .call()
         .map_err(|e| match e {
             ureq::Error::Status(code, _) => RequestError::ServerError { status: code },
             other => RequestError::HttpError(other),
         })
-        .context("Failed to send request")?;
+        .context("Failed to connect to Strapi")?;
 
     let body: serde_json::Value = response
         .into_json()
         .context("Failed to read response body")?;
 
     let data = body.get("data").context("no data in volume response")?;
-    let attributes = data.get("attributes").context("volume as no attributes")?;
-
+    let free_pages_str: String = get_attribute(data, "FreePages").unwrap_or_default();
+    let free_pages: Vec<String> = free_pages_str.split(',').map(|s| s.to_string()).collect();
     return Ok(VolumeData {
-        title: get_attribute(attributes, "Title").context("volume must set title")?,
-        description: get_attribute(attributes, "Description")
-            .context("volume must set description")?,
-        slug: get_attribute(attributes, "Slug").context("volume must set slug")?,
-        pages: attributes
+        title: get_attribute(data, "Title").context("volume must set title")?,
+        description: get_attribute(data, "Description").context("volume must set description")?,
+        slug: get_attribute(data, "Slug").context("volume must set slug")?,
+        free_pages,
+        pages: data
             .get("Pages")
-            .and_then(|p| p.get("data").and_then(|d| d.as_array()))
+            .and_then(|p| p.as_array())
             .context("no pages in volume response")?
             .to_owned(),
     });
@@ -54,14 +55,12 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
         .iter()
         .enumerate()
         .map(|(index, page)| {
-            let attributes = page.get("attributes").context("page has no attributes")?;
+            let title: String =
+                get_attribute(page, "Title").context(format!("page '{}' must set title", index))?;
 
-            let title: String = get_attribute(attributes, "Title")
-                .context(format!("page '{}' must set title", index))?;
-
-            let slug: String = get_attribute(attributes, "Slug")
-                .context(format!("page '{}' must set slug", &title))?;
-            let has_summary: bool = get_attribute(attributes, "HasSummary")
+            let slug: String =
+                get_attribute(page, "Slug").context(format!("page '{}' must set slug", &title))?;
+            let has_summary: bool = get_attribute(page, "HasSummary")
                 .context(format!("page '{}' must set HasSummary", &title))?;
 
             let assignments = if has_summary {
@@ -70,11 +69,7 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
                 Vec::new()
             };
 
-            let parent_attributes = attributes
-                .get("Chapter")
-                .and_then(|v| v.as_object())
-                .and_then(|v| v.get("data"))
-                .and_then(|v| v.get("attributes"));
+            let parent_attributes = page.get("Chapter");
 
             let parent = match parent_attributes {
                 Some(p) => Some(PageParent::new(
@@ -88,10 +83,10 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
 
             // Parse quiz
             let quiz: Option<Vec<QuizItem>> =
-                parse_quiz(attributes).context(format!("parse quiz for page '{}'", &title))?;
+                parse_quiz(page).context(format!("parse quiz for page '{}'", &title))?;
 
             let default_content = Vec::new();
-            let content = attributes
+            let content = page
                 .get("Content")
                 .and_then(|v| v.as_array())
                 .unwrap_or(&default_content);
@@ -277,11 +272,9 @@ fn parse_video(attributes: &Value, page_title: &str) -> anyhow::Result<ChunkData
     });
 }
 
-fn parse_quiz(quiz: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
-    if let Some(data) = quiz
+fn parse_quiz(page: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
+    if let Some(data) = page
         .get("Quiz")
-        .and_then(|q| q.get("data"))
-        .and_then(|q| q.get("attributes"))
         .and_then(|a| a.get("Questions"))
         .and_then(|q| q.as_array())
     {
@@ -326,6 +319,7 @@ fn parse_quiz(quiz: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
     }
 }
 
+// util function to extract value from json response
 fn get_attribute<T>(value: &Value, attribute: &str) -> Option<T>
 where
     T: FromStr,

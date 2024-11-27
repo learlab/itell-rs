@@ -2,7 +2,7 @@
 
 if [ "$#" -ne 2 ]; then
   echo "Usage: $0 <volume_id> <target_directory>"
-  echo "Example: $0 9 itell/apps/research-methods-in-psychology/content"
+  echo "Example: $0 nhm9t3owr7ze7ij01uduaiop itell/apps/research-methods-in-psychology/content"
   exit 1
 fi
 
@@ -13,9 +13,9 @@ if [ ! -f "./target/release/fetch_volume" ]; then
   exit 1
 fi
 
-volume_number=$1
+volume_id=$1
 target_dir=$2
 
-./target/release/fetch_volume "$volume_number"
+./target/release/fetch_volume "$volume_id"
 rm -rf "${target_dir}"/textbook
 cp -r output/* "${target_dir}"
