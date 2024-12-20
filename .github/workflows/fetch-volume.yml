@@ -2,8 +2,35 @@ name: Update Demo Volume
 
 on:
   workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch to update (comma-separated for multiple branches)"
+        required: true
+        default: "main,rmp"
+      volume_id:
+        description: "Volume ID to fetch"
+        required: true
+        default: "nhm9t3owr7ze7ij01uduaiop"
+      content_path:
+        description: "Path to content directory"
+        required: true
+        default: "apps/demo/content/textbook"
+      commit_message:
+        description: "Commit message"
+        required: true
+        default: "Auto update content from fetch_volume"
   schedule:
     - cron: "0 0 * * *" # Run daily at midnight UTC
+
+env:
+  VOLUME_ID: ${{ github.event.inputs.volume_id || 'nhm9t3owr7ze7ij01uduaiop' }}
+  CONTENT_PATH:
+    ${{ github.event.inputs.content_path || 'apps/demo/content/textbook' }}
+  COMMIT_MESSAGE:
+    ${{ github.event.inputs.commit_message || 'Auto update content from
+    fetch_volume' }}
+  TARGET_BRANCHES: ${{ github.event.inputs.target_branch || 'main,rmp' }}
+  REPO_NAME: "learlab/itell"
 
 jobs:
   fetch-volume:
@@ -27,24 +54,48 @@ jobs:
           args: --release --bin fetch_volume
 
       - name: Run fetch_volume
-        run: ./target/release/fetch_volume nhm9t3owr7ze7ij01uduaiop output
+        run: ./target/release/fetch_volume ${{ env.VOLUME_ID }} output
 
-      - name: Checkout itell repository
+      - name: Checkout target repository
         uses: actions/checkout@v4
         with:
-          repository: "learlab/itell"
-          path: "itell"
+          repository: ${{ env.REPO_NAME }}
+          path: "target_repo"
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Copy generated content
         run: |
-          cp -R ./output/* ./itell/apps/demo/content/textbook/
+          cp -R ./output/* ./target_repo/${{ env.CONTENT_PATH }}/
 
-      - name: Commit and push changes
+      - name: Configure Git
         run: |
-          cd itell
+          cd target_repo
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add .
-          git commit -m "Auto update content from fetch_volume" || echo "No changes to commit"
-          git push
+
+      - name: Update branches
+        run: |
+          cd target_repo
+          # Convert comma-separated branch list to array
+          IFS=',' read -ra BRANCHES <<< "${{ env.TARGET_BRANCHES }}"
+
+          for BRANCH in "${BRANCHES[@]}"; do
+            # Trim whitespace
+            BRANCH=$(echo $BRANCH | xargs)
+
+            echo "Processing branch: $BRANCH"
+
+            # Try to checkout existing branch or create new one
+            git fetch origin $BRANCH:$BRANCH 2>/dev/null || git checkout -b $BRANCH
+            git checkout $BRANCH
+            git pull origin $BRANCH || true
+
+            # Ensure content is up to date
+            mkdir -p ${{ env.CONTENT_PATH }}
+            cp -R ../output/* ./${{ env.CONTENT_PATH }}/
+
+            # Commit and push changes
+            git add .
+            git commit -m "${{ env.COMMIT_MESSAGE }}" || echo "No changes to commit for $BRANCH"
+            git push origin $BRANCH
+          done
