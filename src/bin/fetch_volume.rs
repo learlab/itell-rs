@@ -54,11 +54,14 @@ fn main() -> anyhow::Result<()> {
     let volume_str = create_volume_metadata(&volume, &config.output_dir)
         .context("failed to create volume metadata")?;
 
-    for (idx, page) in pages.iter().enumerate() {
-        let next_slug = if idx == pages.len() - 1 {
+    let mut sorted_pages: Vec<&PageData> = pages.iter().collect();
+    sorted_pages.sort_by_key(|page| page.order);
+    
+    for (idx, page) in sorted_pages.iter().enumerate() {
+        let next_slug = if idx == sorted_pages.len() - 1 {
             None
         } else {
-            Some(pages[idx + 1].slug.as_str())
+            Some(sorted_pages[idx + 1].slug.as_str())
         };
         if let Err(e) = create_page(page, &config.output_dir, next_slug) {
             eprintln!("Error writing page {}: {}", page.slug, e);
