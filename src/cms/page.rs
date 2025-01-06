@@ -18,6 +18,7 @@ impl PageParent {
 pub struct PageData {
     /// page title
     pub title: String,
+
     /// page slug, must be unique within the volume
     pub slug: String,
 

@@ -11,7 +11,9 @@ use super::{
 };
 
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
-const QUERY: &str = "?populate%5BPages%5D%5Bfields%5D%5B0%5D=%2A&populate%5BPages%5D%5Bpopulate%5D%5BContent%5D=true&populate%5BPages%5D%5Bpopulate%5D%5BChapter%5D%5Bfields%5D%5B0%5D=Title&populate%5BPages%5D%5Bpopulate%5D%5BChapter%5D%5Bfields%5D%5B1%5D=Slug&populate%5BPages%5D%5Bpopulate%5D%5BQuiz%5D%5Bpopulate%5D%5BQuestions%5D%5Bpopulate%5D=%2A";
+const QUERY: &str = "?populate%5BPages%5D%5Bfields%5D%5B0%5D=%2A&populate%5BPages%5D%5Bsort%5D=createdAt&populate%5BPages%5D%5Bpopulate%5D%5BContent%5D=
+true&populate%5BPages%5D%5Bpopulate%5D%5BChapter%5D%5Bfields%5D%5B0%5D=Title&populate%5BPages%5D%5Bpopulate%5D%5BChapter%5D%5Bfiel
+ds%5D%5B1%5D=Slug&populate%5BPages%5D%5Bpopulate%5D%5BQuiz%5D%5Bpopulate%5D%5BQuestions%5D%5Bpopulate%5D=%2A";
 
 pub struct VolumeData {
     pub title: String,
@@ -25,28 +27,29 @@ pub fn get_volume_data(volume_id: &str) -> anyhow::Result<VolumeData> {
     let response = ureq::get(format!("{}{}{}", BASE_URL, volume_id, QUERY).as_str())
         .call()
         .map_err(|e| match e {
-            ureq::Error::Status(code, _) => RequestError::ServerError { status: code },
-            other => RequestError::HttpError(other),
+            ureq::Error::Status(code, _) => RequestError::StrapiServer { status: code },
+            other => RequestError::Http(other),
         })
-        .context("Failed to connect to Strapi")?;
+        .context("Requesting Strapi API Failed")?;
 
-    let body: serde_json::Value = response
-        .into_json()
-        .context("Failed to read response body")?;
+    let body: serde_json::Value = response.into_json().context("Reponse body is not json")?;
 
     let data = body.get("data").context("no data in volume response")?;
     let free_pages_str: String = get_attribute(data, "FreePages").unwrap_or_default();
     let free_pages: Vec<String> = free_pages_str.split(',').map(|s| s.to_string()).collect();
+
+    let pages = data
+        .get("Pages")
+        .and_then(|p| p.as_array())
+        .context("no pages in volume response")?
+        .to_owned();
+
     return Ok(VolumeData {
         title: get_attribute(data, "Title").context("volume must set title")?,
         description: get_attribute(data, "Description").context("volume must set description")?,
         slug: get_attribute(data, "Slug").context("volume must set slug")?,
+        pages,
         free_pages,
-        pages: data
-            .get("Pages")
-            .and_then(|p| p.as_array())
-            .context("no pages in volume response")?
-            .to_owned(),
     });
 }
 
@@ -85,6 +88,7 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
             let quiz: Option<Vec<QuizItem>> =
                 parse_quiz(page).context(format!("parse quiz for page '{}'", &title))?;
 
+            println!("{}: {}", index, slug);
             let default_content = Vec::new();
             let content = page
                 .get("Content")
@@ -159,12 +163,12 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
 
             Ok(PageData {
                 title: title.to_string(),
+                order: index,
+                chunks: chunks.context("failed to parse chunk")?,
                 slug,
                 parent,
-                order: index,
                 assignments,
                 quiz,
-                chunks: chunks.context("failed to parse chunk")?,
             })
         })
         .collect()
@@ -359,11 +363,11 @@ fn transform_content(content: &str, headings: &mut Vec<Heading>) -> String {
 #[derive(Error, Debug)]
 enum RequestError {
     #[error("HTTP request failed: {0}")]
-    HttpError(#[from] ureq::Error),
+    Http(#[from] ureq::Error),
 
     #[error("Failed to read response body: {0}")]
-    IoError(#[from] std::io::Error),
+    IO(#[from] std::io::Error),
 
     #[error("Server returned an error: {status}")]
-    ServerError { status: u16 },
+    StrapiServer { status: u16 },
 }
