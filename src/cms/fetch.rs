@@ -161,12 +161,15 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
                 })
                 .collect();
 
+            let order: usize = 
+                get_attribute(page, "Order").context(format!("page '{}' must have an Order", &title))?;
+
             Ok(PageData {
                 title: title.to_string(),
-                order: index,
                 chunks: chunks.context("failed to parse chunk")?,
                 slug,
                 parent,
+                order,
                 assignments,
                 quiz,
             })
