@@ -2,7 +2,7 @@
 
 if [ "$#" -ne 2 ]; then
   echo "Usage: $0 <volume_id> <target_directory>"
-  echo "Example: $0 nhm9t3owr7ze7ij01uduaiop itell/apps/research-methods-in-psychology/content"
+  echo "Example: $0 nhm9t3owr7ze7ij01uduaiop ../itell/apps/demo/content"
   exit 1
 fi
 
