@@ -88,7 +88,7 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
             let quiz: Option<Vec<QuizItem>> =
                 parse_quiz(page).context(format!("parse quiz for page '{}'", &title))?;
 
-            println!("{}: {}", index, slug);
+            
             let default_content = Vec::new();
             let content = page
                 .get("Content")
