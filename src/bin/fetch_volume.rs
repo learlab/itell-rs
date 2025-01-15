@@ -102,6 +102,11 @@ fn create_volume_metadata(volume: &VolumeData, output_dir: &str) -> anyhow::Resu
         VolumeFrontmatter::FreePages(volume.free_pages.as_slice()),
     );
 
+    map.insert(
+            "volume_summary",
+            VolumeFrontmatter::VolumeSummary(volume.volume_summary.as_str()),
+        );
+
     let content = serde_yaml_ng::to_string(&map).context("failed to serialize volume metadata")?;
     write!(file, "{}", content).context("failed to write volume metadata")?;
 
@@ -137,4 +142,5 @@ enum VolumeFrontmatter<'a> {
     Slug(&'a str),
     Description(&'a str),
     FreePages(&'a [String]),
+    VolumeSummary(&'a str)
 }

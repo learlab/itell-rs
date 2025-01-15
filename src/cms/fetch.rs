@@ -20,6 +20,7 @@ pub struct VolumeData {
     pub description: String,
     pub slug: String,
     pub free_pages: Vec<String>,
+    pub volume_summary: String,
     pages: Vec<serde_json::Value>,
 }
 
@@ -51,6 +52,7 @@ pub fn get_volume_data(volume_id: &str) -> anyhow::Result<VolumeData> {
     Ok(VolumeData {
         title: get_attribute(data, "Title").context("volume must set title")?,
         description: get_attribute(data, "Description").context("volume must set description")?,
+        volume_summary: get_attribute(data, "VolumeSummary").context("volume must have summary")?,
         slug: get_attribute(data, "Slug").context("volume must set slug")?,
         pages,
         free_pages,

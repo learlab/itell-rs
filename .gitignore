@@ -2,3 +2,5 @@
 node_modules
 output
 *.html
+.idea/
+.DS_Store
