@@ -65,7 +65,6 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
             let title: String =
                 get_attribute(page, "Title").context(format!("page '{}' must set title", index))?;
 
-
             let slug: String =
                 get_attribute(page, "Slug").context(format!("page '{}' must set slug", &title))?;
 
@@ -272,7 +271,7 @@ fn parse_video(attributes: &Value, page_title: &str) -> anyhow::Result<ChunkData
         video_id
     );
 
-    return Ok(ChunkData {
+    Ok(ChunkData {
         title,
         slug: chunk_slug.clone(),
         depth: 2,
@@ -280,7 +279,7 @@ fn parse_video(attributes: &Value, page_title: &str) -> anyhow::Result<ChunkData
         cri,
         show_header: true,
         chunk_type: ChunkType::Video,
-    });
+    })
 }
 
 fn parse_quiz(page: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
