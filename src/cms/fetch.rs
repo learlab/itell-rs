@@ -35,8 +35,12 @@ pub fn get_volume_data(volume_id: &str) -> anyhow::Result<VolumeData> {
     let body: serde_json::Value = response.into_json().context("Reponse body is not json")?;
 
     let data = body.get("data").context("no data in volume response")?;
-    let free_pages_str: String = get_attribute(data, "FreePages").unwrap_or_default();
-    let free_pages: Vec<String> = free_pages_str.split(',').map(|s| s.to_string()).collect();
+    let free_pages: Vec<String> = get_attribute::<String>(data, "FreePages")
+        .unwrap_or_default()
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect();
 
     let pages = data
         .get("Pages")
@@ -44,13 +48,13 @@ pub fn get_volume_data(volume_id: &str) -> anyhow::Result<VolumeData> {
         .context("no pages in volume response")?
         .to_owned();
 
-    return Ok(VolumeData {
+    Ok(VolumeData {
         title: get_attribute(data, "Title").context("volume must set title")?,
         description: get_attribute(data, "Description").context("volume must set description")?,
         slug: get_attribute(data, "Slug").context("volume must set slug")?,
         pages,
         free_pages,
-    });
+    })
 }
 
 pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
@@ -61,34 +65,34 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
             let title: String =
                 get_attribute(page, "Title").context(format!("page '{}' must set title", index))?;
 
+
             let slug: String =
                 get_attribute(page, "Slug").context(format!("page '{}' must set slug", &title))?;
-            let has_summary: bool = get_attribute(page, "HasSummary")
-                .context(format!("page '{}' must set HasSummary", &title))?;
 
-            let assignments = if has_summary {
-                vec![String::from("summary")]
-            } else {
-                Vec::new()
+            let assignments = match get_attribute(page, "HasSummary")
+                .context(format!("page '{}' must set HasSummary", &title))?
+            {
+                true => vec![String::from("summary")],
+                false => Vec::new(),
             };
 
-            let parent_attributes = page.get("Chapter");
-
-            let parent = match parent_attributes {
-                Some(p) => Some(PageParent::new(
-                    get_attribute(p, "Title")
-                        .context(format!("chapter '{}' must set title", &title))?,
-                    get_attribute(p, "Slug")
-                        .context(format!("chapter '{}' must set slug", &title))?,
-                )),
-                None => None,
-            };
+            let parent: Option<PageParent> = page
+                .get("Chapter")
+                .filter(|p| !p.is_null())
+                .map(|p| -> anyhow::Result<PageParent> {
+                    Ok(PageParent::new(
+                        get_attribute(p, "Title")
+                            .context(format!("chapter for page '{}' must set title", &title))?,
+                        get_attribute(p, "Slug")
+                            .context(format!("chapter for page '{}' must set slug", &title))?,
+                    ))
+                })
+                .transpose()?;
 
             // Parse quiz
             let quiz: Option<Vec<QuizItem>> =
                 parse_quiz(page).context(format!("parse quiz for page '{}'", &title))?;
 
-            
             let default_content = Vec::new();
             let content = page
                 .get("Content")
@@ -161,8 +165,8 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
                 })
                 .collect();
 
-            let order: usize = 
-                get_attribute(page, "Order").context(format!("page '{}' must have an Order", &title))?;
+            let order: usize = get_attribute(page, "Order")
+                .context(format!("page '{}' must set Order", &title))?;
 
             Ok(PageData {
                 title: title.to_string(),

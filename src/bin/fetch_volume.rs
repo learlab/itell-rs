@@ -40,7 +40,7 @@ fn main() -> anyhow::Result<()> {
     let config = match parse_config(args) {
         Ok(config) => config,
         Err(e) => {
-            eprintln!("Usage; cargo run <volume_id> [output_dir]");
+            eprintln!("Usage: cargo run <volume_id> [output_dir]");
             return Err(e);
         }
     };
@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut sorted_pages: Vec<&PageData> = pages.iter().collect();
     sorted_pages.sort_by_key(|page| page.order);
-    
+
     for (idx, page) in sorted_pages.iter().enumerate() {
         let next_slug = if idx == sorted_pages.len() - 1 {
             None
