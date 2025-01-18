@@ -16,6 +16,4 @@ fi
 volume_id=$1
 target_dir=$2
 
-./target/release/fetch_volume "$volume_id"
-rm -rf "${target_dir}"/textbook
-cp -r output/* "${target_dir}"
+./target/release/fetch_volume "$volume_id" "$target_dir"
