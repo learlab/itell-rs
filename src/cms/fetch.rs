@@ -20,7 +20,7 @@ pub struct VolumeData {
     pub description: String,
     pub slug: String,
     pub free_pages: Vec<String>,
-    pub summary: String,
+    pub summary: Option<String>,
     pages: Vec<serde_json::Value>,
 }
 
@@ -52,7 +52,7 @@ pub fn get_volume_data(volume_id: &str) -> anyhow::Result<VolumeData> {
     Ok(VolumeData {
         title: get_attribute(data, "Title").context("volume must set title")?,
         description: get_attribute(data, "Description").context("volume must set description")?,
-        summary: get_attribute(data, "VolumeSummary").context("volume must have summary")?,
+        summary: get_attribute(data, "VolumeSummary"),
         slug: get_attribute(data, "Slug").context("volume must set slug")?,
         pages,
         free_pages,
@@ -79,12 +79,12 @@ pub fn collect_pages(resp: &VolumeData) -> anyhow::Result<Vec<PageData>> {
 
             let parent: Option<PageParent> = page
                 .get("Chapter")
-                .filter(|p| !p.is_null())
-                .map(|p| -> anyhow::Result<PageParent> {
+                .filter(|c| !c.is_null())
+                .map(|c| -> anyhow::Result<PageParent> {
                     Ok(PageParent::new(
-                        get_attribute(p, "Title")
+                        get_attribute(c, "Title")
                             .context(format!("chapter for page '{}' must set title", &title))?,
-                        get_attribute(p, "Slug")
+                        get_attribute(c, "Slug")
                             .context(format!("chapter for page '{}' must set slug", &title))?,
                     ))
                 })

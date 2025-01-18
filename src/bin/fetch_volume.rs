@@ -46,7 +46,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let volume =
-        itell::cms::get_volume_data(&config.volume_id).context(format!("could not find volume with id {}, make sure you provide the correct `documentId` found at https://itell-strapi-um5h.onrender.com/api/texts/", config.volume_id.as_str()))?;
+        itell::cms::get_volume_data(&config.volume_id).context(format!("failed to fetch volume data with id {}, make sure you provide the correct `documentId` found at https://itell-strapi-um5h.onrender.com/api/texts/", config.volume_id.as_str()))?;
     let pages = itell::cms::collect_pages(&volume).context("failed to collect pages")?;
 
     create_output_dir(&config.output_dir).context("failed to create output directory")?;
@@ -104,7 +104,7 @@ fn create_volume_metadata(volume: &VolumeData, output_dir: &str) -> anyhow::Resu
 
     map.insert(
         "summary",
-        VolumeFrontmatter::Summary(volume.summary.as_str()),
+        VolumeFrontmatter::Summary(volume.summary.as_deref()),
     );
 
     let content = serde_yaml_ng::to_string(&map).context("failed to serialize volume metadata")?;
@@ -142,5 +142,5 @@ enum VolumeFrontmatter<'a> {
     Slug(&'a str),
     Description(&'a str),
     FreePages(&'a [String]),
-    Summary(&'a str),
+    Summary(Option<&'a str>),
 }

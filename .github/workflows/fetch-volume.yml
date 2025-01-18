@@ -1,20 +1,30 @@
 name: Update Content
-
 on:
   workflow_dispatch:
     inputs:
-      target_branch:
-        description: "Branch to update (comma-separated for multiple branches)"
+      config:
+        description: "JSON configuration for updates"
         required: true
-        default: "main,rmp"
-      volume_id:
-        description: "Volume ID to fetch"
-        required: true
-        default: "nhm9t3owr7ze7ij01uduaiop"
-      content_path:
-        description: "Path to content directory"
-        required: true
-        default: "apps/demo/content/textbook"
+        default: |
+          {
+            "targets": [
+              {
+                "branch": "main",
+                "volume_id": "nhm9t3owr7ze7ij01uduaiop",
+                "path": "apps/demo/content/textbook"
+              },
+              {
+                "branch": "rmp",
+                "volume_id": "nhm9t3owr7ze7ij01uduaiop",
+                "path": "apps/demo/content/textbook"
+              },
+              {
+                "branch": "main",
+                "volume_id": "vb1n097d5bcdes7qyeidww2q",
+                "path": "apps/chevron/content/textbook"
+              }
+            ]
+          }
       commit_message:
         description: "Commit message"
         required: true
@@ -23,13 +33,9 @@ on:
     - cron: "0 0 * * *" # Run daily at midnight UTC
 
 env:
-  VOLUME_ID: ${{ github.event.inputs.volume_id || 'nhm9t3owr7ze7ij01uduaiop' }}
-  CONTENT_PATH:
-    ${{ github.event.inputs.content_path || 'apps/demo/content/textbook' }}
   COMMIT_MESSAGE:
     ${{ github.event.inputs.commit_message || 'Auto update content from
     fetch_volume' }}
-  TARGET_BRANCHES: ${{ github.event.inputs.target_branch || 'main,rmp' }}
   REPO_NAME: "learlab/itell"
 
 jobs:
@@ -53,8 +59,15 @@ jobs:
           command: build
           args: --release --bin fetch_volume
 
-      - name: Run fetch_volume
-        run: ./target/release/fetch_volume ${{ env.VOLUME_ID }} output
+      - name: Parse configuration
+        id: parse-config
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const config = JSON.parse(process.env.CONFIG);
+            return config.targets;
+        env:
+          CONFIG: ${{ github.event.inputs.config }}
 
       - name: Checkout target repository
         uses: actions/checkout@v4
@@ -62,11 +75,7 @@ jobs:
           repository: ${{ env.REPO_NAME }}
           path: "target_repo"
           token: ${{ secrets.GH_TOKEN }}
-          fetch-depth: 0 # Fetch all history for all branches
-
-      - name: Copy generated content
-        run: |
-          cp -R ./output/* ./target_repo/${{ env.CONTENT_PATH }}/
+          fetch-depth: 0
 
       - name: Configure Git
         run: |
@@ -74,35 +83,45 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-      - name: Update branches
+      - name: Process Updates
         run: |
           cd target_repo
-          # Convert comma-separated branch list to array
-          IFS=',' read -ra BRANCHES <<< "${{ env.TARGET_BRANCHES }}"
 
-          for BRANCH in "${BRANCHES[@]}"; do
-            # Trim whitespace
-            BRANCH=$(echo $BRANCH | xargs)
-            echo "Processing branch: $BRANCH"
+          # Read the configuration JSON
+          CONFIG='${{ github.event.inputs.config }}'
+
+          # Parse and process each target using jq
+          echo "$CONFIG" | jq -c '.targets[]' | while read -r target; do
+            # Extract values using jq
+            BRANCH=$(echo "$target" | jq -r '.branch')
+            VOLUME_ID=$(echo "$target" | jq -r '.volume_id')
+            CONTENT_PATH=$(echo "$target" | jq -r '.path')
+            
+            echo "Processing branch: $BRANCH with volume_id: $VOLUME_ID and path: $CONTENT_PATH"
+            
+            # Fetch the specific volume content
+            cd ..
+            ./target/release/fetch_volume "$VOLUME_ID" "output_${BRANCH}"
+            cd target_repo
             
             # Fetch all branches
             git fetch origin
             
             # Check if branch exists remotely
-            if git ls-remote --heads origin $BRANCH | grep -q $BRANCH; then
+            if git ls-remote --heads origin "$BRANCH" | grep -q "$BRANCH"; then
               # Branch exists, check it out
-              git checkout $BRANCH || git checkout -b $BRANCH origin/$BRANCH
-              git pull origin $BRANCH
+              git checkout "$BRANCH" || git checkout -b "$BRANCH" "origin/$BRANCH"
+              git pull origin "$BRANCH"
             else
               # Branch doesn't exist, create it
-              git checkout -b $BRANCH
+              git checkout -b "$BRANCH"
             fi
             
             # Ensure content directory exists
-            mkdir -p ${{ env.CONTENT_PATH }}
+            mkdir -p "$CONTENT_PATH"
             
-            # Copy content
-            cp -R ../output/* ./${{ env.CONTENT_PATH }}/
+            # Copy content to branch-specific path
+            cp -R "../output_${BRANCH}/"* "./$CONTENT_PATH/"
             
             # Stage changes
             git add .
@@ -110,7 +129,7 @@ jobs:
             # Commit and push changes
             if git status --porcelain | grep .; then
               git commit -m "${{ env.COMMIT_MESSAGE }}"
-              git push origin $BRANCH
+              git push origin "$BRANCH"
             else
               echo "No changes to commit for $BRANCH"
             fi
