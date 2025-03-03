@@ -283,7 +283,6 @@ fn parse_video(attributes: &Value, page_title: &str) -> anyhow::Result<ChunkData
         chunk_type: ChunkType::Video,
     })
 }
-
 fn parse_quiz(page: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
     if let Some(data) = page
         .get("Quiz")
@@ -293,35 +292,52 @@ fn parse_quiz(page: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
         let items: anyhow::Result<Vec<QuizItem>> = data
             .iter()
             .map(|q| {
-                let id = get_attribute::<String>(q, "id").context("quiz question has no id")?;
-                let question = get_attribute::<String>(q, "Question")
-                    .context(format!("quiz question '{}' has no question", id))?;
-                let answers = q
-                    .get("Answers")
-                    .and_then(|a| a.as_array())
-                    .context(format!("quiz question '{}' has no answers", id))?;
+                // Check for multiple-choice component type
+                if q.get("__component")
+                    .and_then(|c| c.as_str())
+                    == Some("quizzes.multiple-choice-question")
+                {
+                    let id = get_attribute::<String>(q, "id").context("quiz question has no id")?;
+                    let question = get_attribute::<String>(q, "Question")
+                        .context(format!("quiz question '{}' has no question", id))?;
+                    let answers = q
+                        .get("Answers")
+                        .and_then(|a| a.as_array())
+                        .context(format!("quiz question '{}' has no answers", id))?;
 
-                let quiz_answers: anyhow::Result<Vec<QuizAnswerItem>> = answers
-                    .iter()
-                    .map(|a| {
-                        let answer_id = get_attribute::<String>(a, "id")
-                            .context(format!("in quiz question '{}', one answer has no id", id))?;
-                        let answer = get_attribute::<String>(a, "Text").context(format!(
-                            "in quiz question '{}', answer '{}' has no text",
-                            id, answer_id
-                        ))?;
-                        let correct = get_attribute::<bool>(a, "IsCorrect").context(format!(
-                            "in quiz question '{}', answer {} has no IsCorrect flag",
-                            id, answer_id
-                        ))?;
-                        Ok(QuizAnswerItem { answer, correct })
+                    let quiz_answers: anyhow::Result<Vec<QuizAnswerItem>> = answers
+                        .iter()
+                        .map(|a| {
+                            let answer_id = get_attribute::<String>(a, "id")
+                                .context(format!("in quiz question '{}', one answer has no id", id))?;
+                            let answer = get_attribute::<String>(a, "Text").context(format!(
+                                "in quiz question '{}', answer '{}' has no text",
+                                id, answer_id
+                            ))?;
+                            let correct = get_attribute::<bool>(a, "IsCorrect").context(format!(
+                                "in quiz question '{}', answer {} has no IsCorrect flag",
+                                id, answer_id
+                            ))?;
+                            Ok(QuizAnswerItem { answer, correct })
+                        })
+                        .collect();
+
+                    Ok(QuizItem::Structured {
+                        question,
+                        answers: quiz_answers?,
                     })
-                    .collect();
-
-                Ok(QuizItem {
-                    question,
-                    answers: quiz_answers?,
-                })
+                } 
+                // Handle Markdown-style questions
+                else if let Some(markdown_text) = q.get("GeneratedQuestion").and_then(|q| q.as_str()) {
+                    Ok(QuizItem::Markdown {
+                        markdown: markdown_text.to_string(),
+                    })
+                } 
+                else {
+                    Err(anyhow::anyhow!(
+                        "Quiz item is missing a valid '__component' or 'Question' field"
+                    ))
+                }
             })
             .collect();
 
