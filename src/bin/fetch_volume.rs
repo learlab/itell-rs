@@ -131,7 +131,7 @@ fn create_output_dir(output_dir: &str) -> anyhow::Result<()> {
         fs::remove_dir_all(output_dir)?;
     }
 
-    fs::create_dir(output_dir)?;
+    fs::create_dir_all(output_dir)?;
     Ok(())
 }
 
