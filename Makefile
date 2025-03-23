@@ -9,3 +9,6 @@ chevron:
 
 demo:
 	./build.sh nhm9t3owr7ze7ij01uduaiop ../itell/apps/demo/content/textbook
+
+middlesex:
+	./build.sh k4szzxaraamln78crrfoauqd ../itell/apps/middlesex/content/textbook

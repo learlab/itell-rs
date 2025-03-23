@@ -2,29 +2,6 @@ name: Update Content
 on:
   workflow_dispatch:
     inputs:
-      config:
-        description: "JSON configuration for updates"
-        required: true
-        default: |
-          {
-            "targets": [
-              {
-                "branch": "main",
-                "volume_id": "nhm9t3owr7ze7ij01uduaiop",
-                "path": "apps/demo/content/textbook"
-              },
-              {
-                "branch": "rmp",
-                "volume_id": "nhm9t3owr7ze7ij01uduaiop",
-                "path": "apps/demo/content/textbook"
-              },
-              {
-                "branch": "main",
-                "volume_id": "vb1n097d5bcdes7qyeidww2q",
-                "path": "apps/chevron/content/textbook"
-              }
-            ]
-          }
       commit_message:
         description: "Commit message"
         required: true
@@ -59,16 +36,6 @@ jobs:
           command: build
           args: --release --bin fetch_volume
 
-      - name: Parse configuration
-        id: parse-config
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const config = JSON.parse(process.env.CONFIG);
-            return config.targets;
-        env:
-          CONFIG: ${{ github.event.inputs.config }}
-
       - name: Checkout target repository
         uses: actions/checkout@v4
         with:
@@ -83,54 +50,64 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-      - name: Process Updates
+      - name: Process Volume Updates
         run: |
           cd target_repo
+          git fetch origin
+          git checkout main
+          git pull origin main
 
-          # Read the configuration JSON
-          CONFIG='${{ github.event.inputs.config }}'
+          # Define volumes and their paths in an array
+          declare -A volumes
+          volumes=(
+            ["nhm9t3owr7ze7ij01uduaiop"]="apps/demo/content/textbook"
+            ["k4szzxaraamln78crrfoauqd"]="apps/middlesex/content/textbook"
+          )
 
-          # Parse and process each target using jq
-          echo "$CONFIG" | jq -c '.targets[]' | while read -r target; do
-            # Extract values using jq
-            BRANCH=$(echo "$target" | jq -r '.branch')
-            VOLUME_ID=$(echo "$target" | jq -r '.volume_id')
-            CONTENT_PATH=$(echo "$target" | jq -r '.path')
+          # Track if any changes were made
+          changes_made=false
+
+          # Process each volume
+          for volume_id in "${!volumes[@]}"; do
+            target_path="${volumes[$volume_id]}"
+            echo "Processing volume ID: $volume_id into path: $target_path"
             
-            echo "Processing branch: $BRANCH with volume_id: $VOLUME_ID and path: $CONTENT_PATH"
+            # Create a temporary directory for this volume
+            temp_dir=$(mktemp -d)
             
-            # Fetch the specific volume content
+            # Fetch the volume content
             cd ..
-            ./target/release/fetch_volume "$VOLUME_ID" "output_${BRANCH}"
+            ./target/release/fetch_volume "$volume_id" "$temp_dir"
             cd target_repo
             
-            # Fetch all branches
-            git fetch origin
+            # Ensure target directory exists
+            mkdir -p "$target_path"
             
-            # Check if branch exists remotely
-            if git ls-remote --heads origin "$BRANCH" | grep -q "$BRANCH"; then
-              # Branch exists, check it out
-              git checkout "$BRANCH" || git checkout -b "$BRANCH" "origin/$BRANCH"
-              git pull origin "$BRANCH"
+            # Copy content to the target path
+            if [ -d "$temp_dir" ] && [ "$(ls -A "$temp_dir")" ]; then
+              cp -R "$temp_dir/"* "./$target_path/"
+              
+              # Check if there are changes
+              if git status --porcelain | grep -q "$target_path"; then
+                git add "./$target_path"
+                changes_made=true
+                echo "Changes detected for volume $volume_id"
+              else
+                echo "No changes detected for volume $volume_id"
+              fi
             else
-              # Branch doesn't exist, create it
-              git checkout -b "$BRANCH"
+              echo "Warning: No content found for volume $volume_id"
             fi
             
-            # Ensure content directory exists
-            mkdir -p "$CONTENT_PATH"
-            
-            # Copy content to branch-specific path
-            cp -R "../output_${BRANCH}/"* "./$CONTENT_PATH/"
-            
-            # Stage changes
-            git add .
-            
-            # Commit and push changes
-            if git status --porcelain | grep .; then
-              git commit -m "${{ env.COMMIT_MESSAGE }}"
-              git push origin "$BRANCH"
-            else
-              echo "No changes to commit for $BRANCH"
-            fi
+            # Clean up temp directory
+            rm -rf "$temp_dir"
           done
+
+          # Commit and push if changes were made
+          if [ "$changes_made" = true ]; then
+            git commit -m "${{ env.COMMIT_MESSAGE }}"
+            git push origin main
+            echo "Changes committed and pushed to main"
+          else
+            echo "No changes to commit"
+          fi
