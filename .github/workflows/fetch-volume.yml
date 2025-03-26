@@ -6,36 +6,37 @@ on:
         description: "Commit message"
         required: true
         default: "Auto update content from fetch_volume"
+      volume_ids:
+        description: "Volume IDs (comma-separated)"
+        required: false
+        default: "nhm9t3owr7ze7ij01uduaiop,k4szzxaraamln78crrfoauqd"
   schedule:
-    - cron: "0 0 * * *" # Run daily at midnight UTC
-
+    - cron: "0 0 * * *" # Run daily at midnight UTC (fixed cron syntax)
 env:
   COMMIT_MESSAGE:
     ${{ github.event.inputs.commit_message || 'Auto update content from
     fetch_volume' }}
   REPO_NAME: "learlab/itell"
-
+  VOLUME_IDS:
+    ${{ github.event.inputs.volume_ids ||
+    'nhm9t3owr7ze7ij01uduaiop,k4szzxaraamln78crrfoauqd' }}
 jobs:
   fetch-volume:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
-
       - uses: Swatinem/rust-cache@v2
-
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --release --bin fetch_volume
-
       - name: Checkout target repository
         uses: actions/checkout@v4
         with:
@@ -43,13 +44,11 @@ jobs:
           path: "target_repo"
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
-
       - name: Configure Git
         run: |
           cd target_repo
           git config user.name github-actions
           git config user.email github-actions@github.com
-
       - name: Process Volume Updates
         run: |
           cd target_repo
@@ -57,7 +56,7 @@ jobs:
           git checkout main
           git pull origin main
 
-          # Define volumes and their paths in an array
+          # Define volumes and their paths in an associative array
           declare -A volumes
           volumes=(
             ["nhm9t3owr7ze7ij01uduaiop"]="apps/demo/content/textbook"
@@ -67,40 +66,51 @@ jobs:
           # Track if any changes were made
           changes_made=false
 
-          # Process each volume
-          for volume_id in "${!volumes[@]}"; do
-            target_path="${volumes[$volume_id]}"
-            echo "Processing volume ID: $volume_id into path: $target_path"
+          # Split the input volume IDs by comma
+          IFS=',' read -ra volume_id_array <<< "${{ env.VOLUME_IDS }}"
+
+          # Process each specified volume ID
+          for volume_id in "${volume_id_array[@]}"; do
+            # Trim whitespace
+            volume_id=$(echo "$volume_id" | xargs)
             
-            # Create a temporary directory for this volume
-            temp_dir=$(mktemp -d)
-            
-            # Fetch the volume content
-            cd ..
-            ./target/release/fetch_volume "$volume_id" "$temp_dir"
-            cd target_repo
-            
-            # Ensure target directory exists
-            mkdir -p "$target_path"
-            
-            # Copy content to the target path
-            if [ -d "$temp_dir" ] && [ "$(ls -A "$temp_dir")" ]; then
-              cp -R "$temp_dir/"* "./$target_path/"
+            # Check if volume ID exists in the volumes array
+            if [[ -n "${volumes[$volume_id]}" ]]; then
+              target_path="${volumes[$volume_id]}"
+              echo "Processing volume ID: $volume_id into path: $target_path"
               
-              # Check if there are changes
-              if git status --porcelain | grep -q "$target_path"; then
-                git add "./$target_path"
-                changes_made=true
-                echo "Changes detected for volume $volume_id"
+              # Create a temporary directory for this volume
+              temp_dir=$(mktemp -d)
+              
+              # Fetch the volume content
+              cd ..
+              ./target/release/fetch_volume "$volume_id" "$temp_dir"
+              cd target_repo
+              
+              # Ensure target directory exists
+              mkdir -p "$target_path"
+              
+              # Copy content to the target path
+              if [ -d "$temp_dir" ] && [ "$(ls -A "$temp_dir")" ]; then
+                cp -R "$temp_dir/"* "./$target_path/"
+                
+                # Check if there are changes
+                if git status --porcelain | grep -q "$target_path"; then
+                  git add "./$target_path"
+                  changes_made=true
+                  echo "Changes detected for volume $volume_id"
+                else
+                  echo "No changes detected for volume $volume_id"
+                fi
               else
-                echo "No changes detected for volume $volume_id"
+                echo "Warning: No content found for volume $volume_id"
               fi
+              
+              # Clean up temp directory
+              rm -rf "$temp_dir"
             else
-              echo "Warning: No content found for volume $volume_id"
+              echo "Skipping unknown volume ID: $volume_id (no path defined)"
             fi
-            
-            # Clean up temp directory
-            rm -rf "$temp_dir"
           done
 
           # Commit and push if changes were made
