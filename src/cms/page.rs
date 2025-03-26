@@ -39,9 +39,14 @@ pub struct PageData {
 }
 
 #[derive(Debug, Serialize)]
-pub struct QuizItem {
-    pub question: String,
-    pub answers: Vec<QuizAnswerItem>,
+pub enum QuizItem {
+    Structured {
+        question: String,
+        answers: Vec<QuizAnswerItem>,
+    },
+    Markdown {
+        markdown: String, // This will store the full MD content if no answers exist
+    },
 }
 
 #[derive(Debug, Serialize)]
