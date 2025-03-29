@@ -1,7 +1,7 @@
 use anyhow::{Context, Ok};
 use regex::Regex;
 use serde_json::Value;
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, fmt::format, str::FromStr};
 use thiserror::Error;
 
 use super::{
@@ -31,7 +31,7 @@ pub fn get_volume_data(volume_id: &str) -> anyhow::Result<VolumeData> {
             ureq::Error::Status(code, _) => RequestError::StrapiServer { status: code },
             other => RequestError::Http(other),
         })
-        .context("Requesting Strapi API Failed")?;
+        .context("Conecting to Strapi API")?;
 
     let body: serde_json::Value = response.into_json().context("Reponse body is not json")?;
 
@@ -293,11 +293,10 @@ fn parse_quiz(page: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
             .iter()
             .map(|q| {
                 // Check for multiple-choice component type
-                if q.get("__component")
-                    .and_then(|c| c.as_str())
+                let id = get_attribute::<String>(q, "id").context("quiz question has no id")?;
+                if q.get("__component").and_then(|c| c.as_str())
                     == Some("quizzes.multiple-choice-question")
                 {
-                    let id = get_attribute::<String>(q, "id").context("quiz question has no id")?;
                     let question = get_attribute::<String>(q, "Question")
                         .context(format!("quiz question '{}' has no question", id))?;
                     let answers = q
@@ -308,32 +307,35 @@ fn parse_quiz(page: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
                     let quiz_answers: anyhow::Result<Vec<QuizAnswerItem>> = answers
                         .iter()
                         .map(|a| {
-                            let answer_id = get_attribute::<String>(a, "id")
-                                .context(format!("in quiz question '{}', one answer has no id", id))?;
+                            let answer_id = get_attribute::<String>(a, "id").context(format!(
+                                "in quiz question '{}', one answer has no id",
+                                id
+                            ))?;
                             let answer = get_attribute::<String>(a, "Text").context(format!(
                                 "in quiz question '{}', answer '{}' has no text",
                                 id, answer_id
                             ))?;
-                            let correct = get_attribute::<bool>(a, "IsCorrect").context(format!(
-                                "in quiz question '{}', answer {} has no IsCorrect flag",
-                                id, answer_id
-                            ))?;
+                            let correct =
+                                get_attribute::<bool>(a, "IsCorrect").context(format!(
+                                    "in quiz question '{}', answer {} has no IsCorrect flag",
+                                    id, answer_id
+                                ))?;
                             Ok(QuizAnswerItem { answer, correct })
                         })
                         .collect();
 
-                    Ok(QuizItem::Structured {
+                    Ok(QuizItem {
                         question,
                         answers: quiz_answers?,
                     })
-                } 
+                }
                 // Handle Markdown-style questions
-                else if let Some(markdown_text) = q.get("GeneratedQuestion").and_then(|q| q.as_str()) {
-                    Ok(QuizItem::Markdown {
-                        markdown: markdown_text.to_string(),
-                    })
-                } 
-                else {
+                else if let Some(text) = q.get("GeneratedQuestion").and_then(|q| q.as_str()) {
+                    let quiz_items: Vec<QuizItem> =
+                        serde_yaml_ng::from_str(text).context("quiz format is invalid")?;
+                    let quiz_item = quiz_items.into_iter().next().unwrap();
+                    Ok(quiz_item)
+                } else {
                     Err(anyhow::anyhow!(
                         "Quiz item is missing a valid '__component' or 'Question' field"
                     ))

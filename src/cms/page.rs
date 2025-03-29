@@ -38,18 +38,13 @@ pub struct PageData {
     pub chunks: Vec<ChunkData>,
 }
 
-#[derive(Debug, Serialize)]
-pub enum QuizItem {
-    Structured {
-        question: String,
-        answers: Vec<QuizAnswerItem>,
-    },
-    Markdown {
-        markdown: String, // This will store the full MD content if no answers exist
-    },
+#[derive(Debug, Serialize, serde::Deserialize)]
+pub struct QuizItem {
+    pub question: String,
+    pub answers: Vec<QuizAnswerItem>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, serde::Deserialize)]
 pub struct QuizAnswerItem {
     pub answer: String,
     pub correct: bool,
