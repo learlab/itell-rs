@@ -329,7 +329,7 @@ fn parse_quiz(page: &Value) -> anyhow::Result<Option<Vec<QuizItem>>> {
                         answers: quiz_answers?,
                     })
                 }
-                // Handle Markdown-style questions
+                // TODO: better quiz-type based match case
                 else if let Some(text) = q.get("GeneratedQuestion").and_then(|q| q.as_str()) {
                     let quiz_items: Vec<QuizItem> =
                         serde_yaml_ng::from_str(text).context("quiz format is invalid")?;
