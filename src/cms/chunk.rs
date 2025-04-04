@@ -6,7 +6,7 @@ pub struct ChunkData {
     pub slug: String,
     pub depth: usize,
     pub content: String,
-    pub cri: Option<QuestionAnswer>,
+    pub cri: Option<CriItem>,
     pub show_header: bool,
     pub chunk_type: ChunkType,
 }
@@ -22,7 +22,7 @@ pub enum ChunkType {
 }
 
 #[derive(Serialize, Debug)]
-pub struct QuestionAnswer {
+pub struct CriItem {
     pub question: String,
     pub answer: String,
     pub slug: String,
