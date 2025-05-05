@@ -85,7 +85,7 @@ pub fn get_volume_data(volume_id: &str) -> Result<VolumeData> {
 }
 
 /// Transforms markdown content by adding IDs to H3 headings
-fn transform_content(content: &str, headings: &mut Vec<Heading>) -> String {
+fn transform_headings(content: &str, headings: &mut Vec<Heading>) -> String {
     let heading_regex = Regex::new(r"(?m)^### (.+)$").unwrap();
     let mut slugger = github_slugger::Slugger::default();
 
@@ -412,7 +412,8 @@ pub fn serialize_page(page: &PageData, next_slug: Option<&str>) -> Result<String
 
         // Generate page body
         let header_class = if chunk.show_header { "" } else { " .sr-only" };
-        let content = transform_content(&chunk.content, &mut chunk_headings);
+
+        let content = transform_headings(&chunk.content, &mut chunk_headings);
 
         chunk_meta.add_headings(chunk_headings);
         chunks.push(chunk_meta);

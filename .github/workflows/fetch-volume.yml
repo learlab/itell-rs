@@ -9,7 +9,7 @@ on:
       volume_ids:
         description: "Volume IDs (comma-separated)"
         required: false
-        default: "nhm9t3owr7ze7ij01uduaiop,k4szzxaraamln78crrfoauqd"
+        default: "nhm9t3owr7ze7ij01uduaiop,bi049c8kjvr7ubolz69lnkfh"
   schedule:
     - cron: "0 0 * * *" # Run daily at midnight UTC (fixed cron syntax)
 env:
@@ -19,7 +19,7 @@ env:
   REPO_NAME: "learlab/itell"
   VOLUME_IDS:
     ${{ github.event.inputs.volume_ids ||
-    'nhm9t3owr7ze7ij01uduaiop,k4szzxaraamln78crrfoauqd' }}
+    'nhm9t3owr7ze7ij01uduaiop,bi049c8kjvr7ubolz69lnkfh}}
 jobs:
   fetch-volume:
     runs-on: ubuntu-latest
@@ -60,6 +60,7 @@ jobs:
           declare -A volumes
           volumes=(
             ["nhm9t3owr7ze7ij01uduaiop"]="apps/demo/content/textbook"
+            ["k4szzxaraamln78crrfoauqd"] = "apps/introduction-to-computing/content/textbook"
             ["k4szzxaraamln78crrfoauqd"]="apps/middlesex/content/textbook"
           )
 
