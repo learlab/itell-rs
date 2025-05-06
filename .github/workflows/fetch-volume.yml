@@ -19,7 +19,7 @@ env:
   REPO_NAME: "learlab/itell"
   VOLUME_IDS:
     ${{ github.event.inputs.volume_ids ||
-    'nhm9t3owr7ze7ij01uduaiop,bi049c8kjvr7ubolz69lnkfh}}
+    'nhm9t3owr7ze7ij01uduaiop,bi049c8kjvr7ubolz69lnkfh' }}
 jobs:
   fetch-volume:
     runs-on: ubuntu-latest
