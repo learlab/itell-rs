@@ -183,7 +183,9 @@ fn parse_regular_chunk(
     let header_level = get_attribute::<String>(chunk, "HeaderLevel");
     let depth = match header_level.as_deref() {
         Some("h3") => 3,
+        Some("H3") => 3,
         Some("h4") => 4,
+        Some("H4") => 4,
         _ => 2,
     };
 
