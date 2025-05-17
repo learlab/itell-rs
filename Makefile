@@ -13,5 +13,8 @@ demo:
 middlesex:
 	./build.sh k4szzxaraamln78crrfoauqd ../itell/apps/middlesex/content/textbook
 
+rmp:
+	./build.sh nhm9t3owr7ze7ij01uduaiop ../itell/apps/rmp/content/textbook
+
 introduction-to-computing:
 	./build.sh bi049c8kjvr7ubolz69lnkfh ../itell/apps/introduction-to-computing/content/textbook
