@@ -6,8 +6,9 @@ use std::{
 };
 
 use anyhow::Context;
-use itell::cms::{serialize_page, PageData, VolumeData};
+use itell::cms::{serialize_page, PageData, VolumeData, get_embedding_slugs, perform_health_check, HealthCheckData, save_health_check_to_supabase};
 use serde::Serialize;
+use dotenv::dotenv;
 
 const BOLD: &str = "\x1b[1m";
 const RESET: &str = "\x1b[0m";
@@ -16,22 +17,53 @@ const DEFAULT_OUTPUT_DIR: &str = "output/textbook";
 pub struct Config {
     pub volume_id: String,
     pub output_dir: String,
+    pub embeddings_supabase_url: String, 
+    pub embeddings_supabase_api_key: String,
+    pub log_supabase_url: String,
+    pub log_supabase_api_key: String,
 }
 
 impl Config {
-    pub fn new(volume_id: String, output_dir: &str) -> Self {
+    pub fn new(
+        volume_id: String, 
+        output_dir: &str, 
+        embeddings_supabase_url: String, 
+        embeddings_supabase_api_key: String,
+        log_supabase_url: String,
+        log_supabase_api_key: String,
+    ) -> Self {
         Self {
             volume_id,
             output_dir: output_dir.to_string(),
+            embeddings_supabase_url,
+            embeddings_supabase_api_key,
+            log_supabase_url,
+            log_supabase_api_key,
         }
     }
 }
 
+
 fn parse_config(mut args: impl Iterator<Item = String>) -> anyhow::Result<Config> {
     let volume_id = args.next().context("volume_id is required, search for the 'documentId` field at https://itell-strapi-um5h.onrender.com/api/texts/")?;
     let output_dir = args.next().unwrap_or(DEFAULT_OUTPUT_DIR.to_string());
+    
+    let _ = dotenv();
 
-    Ok(Config::new(volume_id, &output_dir))
+    // Get iTELL AI Supabase configuration from environment variables
+    let embeddings_supabase_url = env::var("EMBEDDINGS_SUPABASE_URL")
+        .context("EMBEDDINGS_SUPABASE_URL environment variable is required. Please set it in your .env file.")?;
+    let embeddings_supabase_api_key = env::var("EMBEDDINGS_SUPABASE_API_KEY")
+        .context("EMBEDDINGS_SUPABASE_API_KEY environment variable is required. Please set it in your .env file.")?;
+    
+    // Get Log Supabase configuration from environment variables
+    let log_supabase_url = env::var("LOG_SUPABASE_URL")
+        .context("LOG_SUPABASE_URL environment variable is required. Please set it in your .env file.")?;
+    let log_supabase_api_key = env::var("LOG_SUPABASE_API_KEY")
+        .context("LOG_SUPABASE_API_KEY environment variable is required. Please set it in your .env file.")?;
+
+    Ok(Config::new(volume_id, &output_dir, embeddings_supabase_url, embeddings_supabase_api_key, log_supabase_url, log_supabase_api_key))
+
 }
 
 fn main() -> anyhow::Result<()> {
@@ -79,6 +111,26 @@ fn main() -> anyhow::Result<()> {
         pages.len(),
         &config.output_dir
     );
+
+    // Start health check
+    let embedding_slugs_array = get_embedding_slugs(&config.embeddings_supabase_url, &config.embeddings_supabase_api_key, &volume.slug.as_str())
+        .context("Failed to get embedding slugs")?;
+
+    let health_check = perform_health_check(
+        &config.volume_id,
+        &volume.slug,
+        &volume.title,
+        &pages,
+        &embedding_slugs_array,
+    ).context("Failed to perform health check")?;
+
+    save_health_check_to_supabase(
+        &health_check,
+        &config.log_supabase_url,
+        &config.log_supabase_api_key,
+    ).context("Failed to save health check to Supabase")?;
+
+    print_health_check_summary(&health_check);
 
     Ok(())
 }
@@ -133,6 +185,33 @@ fn create_output_dir(output_dir: &str) -> anyhow::Result<()> {
 
     fs::create_dir_all(output_dir)?;
     Ok(())
+}
+
+fn print_health_check_summary(health_check: &HealthCheckData) {
+    println!("--------------------");
+    println!("\n{BOLD}HEALTH CHECK SUMMARY:{RESET}");
+    println!("--------------------");
+    println!("Volume: {} (Slug: {})", health_check.volume_title, health_check.volume_slug);
+    println!("Total chunks: {}", health_check.total_chunks);
+    println!("✓ Existing in Supabase: {BOLD}{}{RESET}", health_check.existing_chunks_count);
+    
+    if health_check.missing_chunks_count == 0 {
+        println!("✓ All chunks found in Supabase! 🎉");
+    } else {
+        println!("✗ Missing from Supabase: {BOLD}{}{RESET}", health_check.missing_chunks_count);
+        println!("\nMissing chunks by page:");
+        for page in &health_check.pages {
+            if !page.missing_chunks.is_empty() {
+                println!("  Page '{}': {} missing", page.page_title, page.missing_chunks.len());
+                for chunk in &page.missing_chunks {
+                    println!("    - {}", chunk);
+                }
+            }
+        }
+        println!("💡Tip: The chunk slug might exist in the embeddings table but under a different volume slug. Check the Supabase database to verify.");
+    }
+    
+    println!("\n✓ Health check data saved to Supabase log table");
 }
 
 #[derive(Serialize, Debug)]
