@@ -70,32 +70,40 @@ jobs:
             
             # Run fetch_volume with validation
             if ./target/release/fetch_volume "$volume_id" "$volume_output_dir"; then
-              echo "✅ Volume $volume_id: Content fetched and vectors validated successfully"
-              validation_results="$validation_results\nVolume $volume_id: ✅ PASSED - All vectors found"
+              echo ""
+              echo "✅ Volume $volume_id: SUCCESS"
+              successful_volumes="$successful_volumes$volume_id,"
+              validation_results="$validation_results✅ Volume $volume_id: PASSED - All vectors validated\n"
             else
-              echo "❌ Volume $volume_id: Validation failed"
+              echo ""
+              echo "❌ Volume $volume_id: VALIDATION FAILED"
               overall_status="failed"
-              failed_volumes="$failed_volumes,$volume_id"
-              validation_results="$validation_results\nVolume $volume_id: ❌ FAILED - Missing vectors (check logs for details)"
+              failed_volumes="$failed_volumes$volume_id,"
+              validation_results="$validation_results❌ Volume $volume_id: FAILED - Missing vectors detected\n"
             fi
+            echo "========================================="
+            echo ""
           done
 
           # Remove trailing commas
           successful_volumes=${successful_volumes%,}
           failed_volumes=${failed_volumes%,}
-
+          
           # Set outputs for CMS to read
           echo "status=$overall_status" >> $GITHUB_OUTPUT
           echo "successful_volumes=$successful_volumes" >> $GITHUB_OUTPUT
           echo "failed_volumes=$failed_volumes" >> $GITHUB_OUTPUT
-
+          
           if [ "$overall_status" = "failed" ]; then
-            message="Vector validation failed for volumes: $failed_volumes"
+            message="❌ Vector validation failed for: $failed_volumes"
+            if [ -n "$successful_volumes" ]; then
+              message="$message (✅ Successful: $successful_volumes)"
+            fi
             echo "message=$message" >> $GITHUB_OUTPUT
             echo "details<<EOF" >> $GITHUB_OUTPUT
             echo -e "$validation_results" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
-            echo "❌ $message"
+            echo "🔍 FINAL RESULT: $message"
             echo "💡 Detailed missing chunk information is shown in the logs above"
             exit 1
           else
@@ -104,7 +112,7 @@ jobs:
             echo "details<<EOF" >> $GITHUB_OUTPUT
             echo -e "$validation_results" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
-            echo "✅ $message"
+            echo "🎉 FINAL RESULT: $message"
           fi
 
       - name: Checkout target repository
