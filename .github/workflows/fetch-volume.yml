@@ -138,6 +138,7 @@ jobs:
             ["nhm9t3owr7ze7ij01uduaiop"]="apps/rmp/content/textbook"
             ["bi049c8kjvr7ubolz69lnkfh"]="apps/introduction-to-computing/content/textbook"
             ["k4szzxaraamln78crrfoauqd"]="apps/middlesex/content/textbook"
+            ["n5s87ty7pbpbrmjenxc0ssjh"]="apps/test-publish-workflow/content/textbook"
           )
 
           # Track if any changes were made
