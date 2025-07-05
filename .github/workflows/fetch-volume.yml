@@ -10,6 +10,10 @@ on:
         description: "Volume IDs (comma-separated)"
         required: false
         default: "nhm9t3owr7ze7ij01uduaiop,bi049c8kjvr7ubolz69lnkfh"
+      dispatch-id:
+        description: "Unique id to track github publish"
+        required: false
+        default: ""
   schedule:
     - cron: "0 0 * * *" # Run daily at midnight UTC (fixed cron syntax)
 env:
@@ -21,6 +25,12 @@ env:
     ${{ github.event.inputs.volume_ids ||
     'nhm9t3owr7ze7ij01uduaiop,bi049c8kjvr7ubolz69lnkfh' }}
 jobs:
+  dispatch-id:
+    if: github.event.inputs.dispatch_id != ""
+    runs-on: [ ubuntu-latest ]
+    steps:
+    - name: ${{ github.event.inputs.dispatch_id }}
+      run: echo "Dispatch ID is ${{ github.event.inputs.dispatch_id }}"
   fetch-volume:
     runs-on: ubuntu-latest
     steps:
