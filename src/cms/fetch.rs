@@ -84,6 +84,7 @@ pub fn get_volume_data(volume_id: &str) -> Result<VolumeData> {
     })
 }
 
+
 /// Transforms markdown content by adding IDs to H3 headings
 fn transform_headings(content: &str, headings: &mut Vec<Heading>) -> String {
     let heading_regex = Regex::new(r"(?m)^### (.+)$").unwrap();

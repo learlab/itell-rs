@@ -3,26 +3,43 @@ use std::io::Write;
 use std::{
     env,
     fs::{self, OpenOptions},
+    process,
 };
 
 use anyhow::Context;
-use itell::cms::{serialize_page, PageData, VolumeData};
+use dotenv::dotenv;
+use itell::cms::{
+    get_embedding_slugs, perform_health_check, serialize_page, HealthCheckData, PageData,
+    VolumeData,
+};
 use serde::Serialize;
 
 const BOLD: &str = "\x1b[1m";
 const RESET: &str = "\x1b[0m";
+const RED: &str = "\x1b[31m";
+const GREEN: &str = "\x1b[32m";
+const YELLOW: &str = "\x1b[33m";
 const DEFAULT_OUTPUT_DIR: &str = "output/textbook";
 
 pub struct Config {
     pub volume_id: String,
     pub output_dir: String,
+    pub embeddings_supabase_url: String,
+    pub embeddings_supabase_api_key: String,
 }
 
 impl Config {
-    pub fn new(volume_id: String, output_dir: &str) -> Self {
+    pub fn new(
+        volume_id: String,
+        output_dir: &str,
+        embeddings_supabase_url: String,
+        embeddings_supabase_api_key: String,
+    ) -> Self {
         Self {
             volume_id,
             output_dir: output_dir.to_string(),
+            embeddings_supabase_url,
+            embeddings_supabase_api_key,
         }
     }
 }
@@ -31,7 +48,20 @@ fn parse_config(mut args: impl Iterator<Item = String>) -> anyhow::Result<Config
     let volume_id = args.next().context("volume_id is required, search for the 'documentId` field at https://itell-strapi-um5h.onrender.com/api/texts/")?;
     let output_dir = args.next().unwrap_or(DEFAULT_OUTPUT_DIR.to_string());
 
-    Ok(Config::new(volume_id, &output_dir))
+    let _ = dotenv();
+
+    // Get iTELL AI Supabase configuration from environment variables
+    let embeddings_supabase_url = env::var("EMBEDDINGS_SUPABASE_URL")
+        .context("EMBEDDINGS_SUPABASE_URL environment variable is required. Please set it in your .env file.")?;
+    let embeddings_supabase_api_key = env::var("EMBEDDINGS_SUPABASE_API_KEY")
+        .context("EMBEDDINGS_SUPABASE_API_KEY environment variable is required. Please set it in your .env file.")?;
+
+    Ok(Config::new(
+        volume_id,
+        &output_dir,
+        embeddings_supabase_url,
+        embeddings_supabase_api_key,
+    ))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -46,14 +76,19 @@ fn main() -> anyhow::Result<()> {
     };
 
     let volume =
-        itell::cms::get_volume_data(&config.volume_id).context(format!("failed to fetch volume data with id {}, make sure you provide the correct `documentId` found at https://itell-strapi-um5h.onrender.com/api/texts/", config.volume_id.as_str()))?;
+        itell::cms::get_volume_data(&config.volume_id).context(format!(
+            "failed to fetch volume data with id {}, make sure you provide the correct `documentId` found at https://itell-strapi-um5h.onrender.com/api/texts/",
+            config.volume_id.as_str()
+        ))?;
     let pages = itell::cms::collect_pages(&volume).context("failed to collect pages")?;
 
     create_output_dir(&config.output_dir).context("failed to create output directory")?;
 
+    // Create volume metadata
     let volume_str = create_volume_metadata(&volume, &config.output_dir)
         .context("failed to create volume metadata")?;
 
+    // Sort and create pages
     let mut sorted_pages: Vec<&PageData> = pages.iter().collect();
     sorted_pages.sort_by_key(|page| page.order);
 
@@ -64,23 +99,45 @@ fn main() -> anyhow::Result<()> {
             Some(sorted_pages[idx + 1].slug.as_str())
         };
         if let Err(e) = create_page(page, &config.output_dir, next_slug) {
-            eprintln!("Error writing page {}: {}", page.slug, e);
-            return Err(e);
+            eprintln!("{}Error writing page {}: {}{}", RED, page.slug, e, RESET);
+            process::exit(1);
         }
     }
 
-    println!("Fetched volume metadata\n");
-    println!("---");
-    println!("{}", volume_str);
-    println!("---\n");
+    println!("{}✅ Content fetched successfully{}", GREEN, RESET);
+    println!("Volume: {} ({})", volume.title, volume.slug);
+    println!("Created {} pages in {}", pages.len(), &config.output_dir);
+    println!();
 
-    println!(
-        "created {BOLD}{}{RESET} pages in {BOLD}{}{RESET}",
-        pages.len(),
-        &config.output_dir
-    );
+    // Start health check
+    println!("{}🔍 Starting vector validation...{}", YELLOW, RESET);
+    let embedding_slugs_array = get_embedding_slugs(
+        &config.embeddings_supabase_url,
+        &config.embeddings_supabase_api_key,
+        &volume.slug.as_str(),
+    )
+    .context("Failed to get embedding slugs")?;
 
-    Ok(())
+    let health_check = perform_health_check(
+        &config.volume_id,
+        &volume.slug,
+        &volume.title,
+        &pages,
+        &embedding_slugs_array,
+    )
+    .context("Failed to perform health check")?;
+
+    // Print health check results and determine exit code
+    let validation_passed = print_health_check_summary(&health_check);
+
+    // Exit with appropriate code for GitHub Actions
+    if validation_passed {
+        println!("{}✅ Vector validation passed!{}", GREEN, RESET);
+        process::exit(0);
+    } else {
+        println!("{}❌ Vector validation failed!{}", RED, RESET);
+        process::exit(1);
+    }
 }
 
 fn create_volume_metadata(volume: &VolumeData, output_dir: &str) -> anyhow::Result<String> {
@@ -133,6 +190,49 @@ fn create_output_dir(output_dir: &str) -> anyhow::Result<()> {
 
     fs::create_dir_all(output_dir)?;
     Ok(())
+}
+
+fn print_health_check_summary(health_check: &HealthCheckData) -> bool {
+    println!("--------------------");
+    println!("\n{BOLD}HEALTH CHECK SUMMARY:{RESET}");
+    println!("--------------------");
+    println!(
+        "Volume: {} (Slug: {})",
+        health_check.volume_title, health_check.volume_slug
+    );
+    println!("Total chunks: {}", health_check.total_chunks);
+    println!(
+        "✓ Existing in Supabase: {}{}{}",
+        BOLD, health_check.existing_chunks_count, RESET
+    );
+
+    let validation_passed = health_check.missing_chunks_count == 0;
+
+    if validation_passed {
+        println!("✓ All chunks found in Supabase! 🎉");
+    } else {
+        println!(
+            "✗ Missing from Supabase: {BOLD}{}{RESET}",
+            health_check.missing_chunks_count
+        );
+        println!("\nMissing chunks by page:");
+        for page in &health_check.pages {
+            if !page.missing_chunks.is_empty() {
+                println!(
+                    "  Page '{}': {} missing",
+                    page.page_title,
+                    page.missing_chunks.len()
+                );
+                for chunk in &page.missing_chunks {
+                    println!("    - {}", chunk);
+                }
+            }
+        }
+        println!("💡Tip: Verify that all pages have been successfully published. If there was an issue, try publishing the page with missing chunks again.");
+    }
+
+    println!();
+    validation_passed
 }
 
 #[derive(Serialize, Debug)]

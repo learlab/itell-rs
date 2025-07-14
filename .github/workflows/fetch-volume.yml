@@ -21,8 +21,7 @@ env:
     ${{ github.event.inputs.commit_message || 'Auto update content from
     fetch_volume' }}
   REPO_NAME: "learlab/itell"
-  VOLUME_IDS:
-    ${{ github.event.inputs.volume_ids ||
+  VOLUME_IDS: ${{ github.event.inputs.volume_ids ||
     'nhm9t3owr7ze7ij01uduaiop,bi049c8kjvr7ubolz69lnkfh' }}
 jobs:
   dispatch-id:
@@ -33,33 +32,118 @@ jobs:
       run: echo "Dispatch ID is ${{ github.event.inputs.dispatch_id }}"
   fetch-volume:
     runs-on: ubuntu-latest
+    outputs:
+      validation_status: ${{ steps.fetch_and_validate.outputs.status }}
+      validation_message: ${{ steps.fetch_and_validate.outputs.message }}
+      validation_details: ${{ steps.fetch_and_validate.outputs.details }}
+      deployment_status: ${{ steps.deploy.outputs.status }}
+      processed_volumes: ${{ steps.process.outputs.volumes }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --release --bin fetch_volume
+
+      - name: Fetch and Validate Content
+        id: fetch_and_validate
+        env:
+          EMBEDDINGS_SUPABASE_URL: ${{ secrets.EMBEDDINGS_SUPABASE_URL }}
+          EMBEDDINGS_SUPABASE_API_KEY: ${{ secrets.EMBEDDINGS_SUPABASE_API_KEY }}
+        run: |
+          # Initialize tracking variables
+          validation_results=""
+          overall_status="success"
+          failed_volumes=""
+          temp_dir=$(mktemp -d)
+          echo "temp_dir=$temp_dir" >> $GITHUB_OUTPUT
+
+          # Process each volume
+          IFS=',' read -ra volume_id_array <<< "${{ env.VOLUME_IDS }}"
+          for volume_id in "${volume_id_array[@]}"; do
+            volume_id=$(echo "$volume_id" | xargs)
+            echo "🔄 Processing volume: $volume_id"
+            
+            # Create volume-specific directory
+            volume_output_dir="$temp_dir/$volume_id"
+            
+            # Run fetch_volume with validation
+            if ./target/release/fetch_volume "$volume_id" "$volume_output_dir"; then
+              echo ""
+              echo "✅ Volume $volume_id: SUCCESS"
+              successful_volumes="$successful_volumes$volume_id,"
+              validation_results="$validation_results✅ Volume $volume_id: PASSED - All vectors validated\n"
+            else
+              echo ""
+              echo "❌ Volume $volume_id: VALIDATION FAILED"
+              overall_status="failed"
+              failed_volumes="$failed_volumes$volume_id,"
+              validation_results="$validation_results❌ Volume $volume_id: FAILED - Missing vectors detected\n"
+            fi
+            echo "========================================="
+            echo ""
+          done
+
+          # Remove trailing commas
+          successful_volumes=${successful_volumes%,}
+          failed_volumes=${failed_volumes%,}
+          
+          # Set outputs for CMS to read
+          echo "status=$overall_status" >> $GITHUB_OUTPUT
+          echo "successful_volumes=$successful_volumes" >> $GITHUB_OUTPUT
+          echo "failed_volumes=$failed_volumes" >> $GITHUB_OUTPUT
+          
+          if [ "$overall_status" = "failed" ]; then
+            message="❌ Vector validation failed for: $failed_volumes"
+            if [ -n "$successful_volumes" ]; then
+              message="$message (✅ Successful: $successful_volumes)"
+            fi
+            echo "message=$message" >> $GITHUB_OUTPUT
+            echo "details<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$validation_results" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "🔍 FINAL RESULT: $message"
+            echo "💡 Detailed missing chunk information is shown in the logs above"
+            exit 1
+          else
+            message="✅ All vectors validated successfully for $total_volumes volume(s): $successful_volumes"
+            echo "message=$message" >> $GITHUB_OUTPUT
+            echo "details<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$validation_results" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "🎉 FINAL RESULT: $message"
+          fi
+
       - name: Checkout target repository
+        if: steps.fetch_and_validate.outputs.status == 'success'
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO_NAME }}
           path: "target_repo"
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
+
       - name: Configure Git
+        if: steps.fetch_and_validate.outputs.status == 'success'
         run: |
           cd target_repo
           git config user.name github-actions
           git config user.email github-actions@github.com
-      - name: Process Volume Updates
+
+      - name: Deploy Content
+        if: steps.fetch_and_validate.outputs.status == 'success'
+        id: deploy
         run: |
           cd target_repo
           git fetch origin
@@ -72,6 +156,7 @@ jobs:
             ["nhm9t3owr7ze7ij01uduaiop"]="apps/rmp/content/textbook"
             ["bi049c8kjvr7ubolz69lnkfh"]="apps/introduction-to-computing/content/textbook"
             ["k4szzxaraamln78crrfoauqd"]="apps/middlesex/content/textbook"
+            ["n5s87ty7pbpbrmjenxc0ssjh"]="apps/test-publish-workflow/content/textbook"
           )
 
           # Track if any changes were made
@@ -88,39 +173,31 @@ jobs:
             # Check if volume ID exists in the volumes array
             if [[ -n "${volumes[$volume_id]}" ]]; then
               target_path="${volumes[$volume_id]}"
-              echo "Processing volume ID: $volume_id into path: $target_path"
+              echo "📂 Deploying volume ID: $volume_id to path: $target_path"
               
-              # Create a temporary directory for this volume
-              temp_dir=$(mktemp -d)
-              
-              # Fetch the volume content
-              cd ..
-              ./target/release/fetch_volume "$volume_id" "$temp_dir"
-              cd target_repo
+              # Source directory from our validated content
+              source_dir="${{ steps.fetch_and_validate.outputs.temp_dir }}/$volume_id"
               
               # Ensure target directory exists
               mkdir -p "$target_path"
               
               # Copy content to the target path
-              if [ -d "$temp_dir" ] && [ "$(ls -A "$temp_dir")" ]; then
-                cp -R "$temp_dir/"* "./$target_path/"
+              if [ -d "$source_dir" ] && [ "$(ls -A "$source_dir")" ]; then
+                cp -R "$source_dir/"* "./$target_path/"
                 
                 # Check if there are changes
                 if git status --porcelain | grep -q "$target_path"; then
                   git add "./$target_path"
                   changes_made=true
-                  echo "Changes detected for volume $volume_id"
+                  echo "✅ Changes detected for volume $volume_id"
                 else
-                  echo "No changes detected for volume $volume_id"
+                  echo "ℹ️  No changes detected for volume $volume_id"
                 fi
               else
-                echo "Warning: No content found for volume $volume_id"
+                echo "⚠️  Warning: No content found for volume $volume_id"
               fi
-              
-              # Clean up temp directory
-              rm -rf "$temp_dir"
             else
-              echo "Skipping unknown volume ID: $volume_id (no path defined)"
+              echo "⚠️  Skipping unknown volume ID: $volume_id (no path defined)"
             fi
           done
 
@@ -128,7 +205,9 @@ jobs:
           if [ "$changes_made" = true ]; then
             git commit -m "${{ env.COMMIT_MESSAGE }}"
             git push origin main
-            echo "Changes committed and pushed to main"
+            echo "✅ Changes committed and pushed to main"
+            echo "status=success" >> $GITHUB_OUTPUT
           else
-            echo "No changes to commit"
+            echo "ℹ️  No changes to commit"
+            echo "status=no_changes" >> $GITHUB_OUTPUT
           fi
