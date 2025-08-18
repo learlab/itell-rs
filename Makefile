@@ -4,6 +4,9 @@ build:
 test:
 	./build.sh nhm9t3owr7ze7ij01uduaiop output/textbook
 
+testing:
+	./build.sh r45rrxumaunejh5kwh6o7gr3 ../itell/apps/testing/content/textbook
+
 chevron:
 	./build.sh vb1n097d5bcdes7qyeidww2q ../itell/apps/chevron/content/textbook
 
