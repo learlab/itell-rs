@@ -26,4 +26,4 @@ introduction-to-computing:
 	./build.sh bi049c8kjvr7ubolz69lnkfh ../itell/apps/introduction-to-computing/content/textbook
 
 civic:
-	./build.sh r45rrxumaunejh5kwh6o7gr3 output
+	./build.sh r45rrxumaunejh5kwh6o7gr3 ../itell/apps/testing/content/textbook
