@@ -34,6 +34,9 @@ pub struct PageData {
     // quiz
     pub quiz: Option<Vec<QuizItem>>,
 
+    // cloze test
+    pub cloze_test: Option<ClozeTest>,
+
     /// content chunks
     pub chunks: Vec<ChunkData>,
 }
@@ -48,4 +51,18 @@ pub struct QuizItem {
 pub struct QuizAnswerItem {
     pub answer: String,
     pub correct: bool,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+pub struct ClozeGap {
+    pub start: usize,
+    pub end: usize,
+    pub gapped_text: String,
+    pub original_word: Option<String>,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+pub struct ClozeTest {
+    pub original_text: String,
+    pub gaps: Vec<ClozeGap>,
 }

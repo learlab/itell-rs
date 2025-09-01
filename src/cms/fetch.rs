@@ -7,7 +7,7 @@ use thiserror::Error;
 use super::{
     chunk::{ChunkData, ChunkType, CriItem},
     frontmatter::{ChunkMeta, Frontmatter, Heading},
-    page::{PageData, PageParent, QuizAnswerItem, QuizItem},
+    page::{PageData, PageParent, QuizAnswerItem, QuizItem, ClozeTest},
 };
 
 const BASE_URL: &str = "https://itell-strapi-um5h.onrender.com/api/texts/";
@@ -297,6 +297,19 @@ fn parse_generated_question(yaml_text: &str) -> Result<QuizItem> {
         .ok_or_else(|| anyhow::anyhow!("Generated question YAML contains no items"))
 }
 
+/// Parse ClozeTest from the API response
+fn parse_cloze_test(page: &Value) -> Result<Option<ClozeTest>> {
+    let cloze_test_str = match page.get("ClozeTest").and_then(|v| v.as_str()) {
+        Some(s) if !s.is_empty() => s,
+        _ => return Ok(None),
+    };
+
+    let cloze_test: ClozeTest = serde_json::from_str(cloze_test_str)
+        .context("Failed to parse ClozeTest JSON")?;
+
+    Ok(Some(cloze_test))
+}
+
 /// Collects and processes pages from volume data
 pub fn collect_pages(resp: &VolumeData) -> Result<Vec<PageData>> {
     resp.pages
@@ -338,6 +351,14 @@ pub fn collect_pages(resp: &VolumeData) -> Result<Vec<PageData>> {
                 assignments.push("quiz".to_string());
             }
 
+            // Parse cloze test
+            let cloze_test = parse_cloze_test(page)
+                .context(format!("Failed to parse ClozeTest for page '{}'", &title))?;
+
+            if cloze_test.is_some() {
+                assignments.push("cloze".to_string());
+            }
+
             // Parse content chunks
             let default_content = Vec::new();
             let content = page
@@ -362,6 +383,7 @@ pub fn collect_pages(resp: &VolumeData) -> Result<Vec<PageData>> {
                 order,
                 assignments,
                 quiz,
+                cloze_test,
             })
         })
         .collect()
@@ -395,6 +417,7 @@ pub fn serialize_page(page: &PageData, next_slug: Option<&str>) -> Result<String
     fm.insert("assignments", Frontmatter::Assignments(&page.assignments));
     fm.insert("parent", Frontmatter::Parent(page.parent.as_ref()));
     fm.insert("quiz", Frontmatter::Quiz(page.quiz.as_ref()));
+    fm.insert("cloze_test", Frontmatter::ClozeTest(page.cloze_test.as_ref()));
 
     let mut cri = Vec::<&CriItem>::new();
     let mut chunks = Vec::<ChunkMeta>::new();

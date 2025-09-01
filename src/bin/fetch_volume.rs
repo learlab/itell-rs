@@ -7,7 +7,6 @@ use std::{
 };
 
 use anyhow::Context;
-use dotenv::dotenv;
 use itell::cms::{
     get_embedding_slugs, perform_health_check, serialize_page, HealthCheckData, PageData,
     VolumeData,
@@ -24,16 +23,16 @@ const DEFAULT_OUTPUT_DIR: &str = "output/textbook";
 pub struct Config {
     pub volume_id: String,
     pub output_dir: String,
-    pub embeddings_supabase_url: String,
-    pub embeddings_supabase_api_key: String,
+    pub embeddings_supabase_url: Option<String>,
+    pub embeddings_supabase_api_key: Option<String>,
 }
 
 impl Config {
     pub fn new(
         volume_id: String,
         output_dir: &str,
-        embeddings_supabase_url: String,
-        embeddings_supabase_api_key: String,
+        embeddings_supabase_url: Option<String>,
+        embeddings_supabase_api_key: Option<String>,
     ) -> Self {
         Self {
             volume_id,
@@ -48,13 +47,10 @@ fn parse_config(mut args: impl Iterator<Item = String>) -> anyhow::Result<Config
     let volume_id = args.next().context("volume_id is required, search for the 'documentId` field at https://itell-strapi-um5h.onrender.com/api/texts/")?;
     let output_dir = args.next().unwrap_or(DEFAULT_OUTPUT_DIR.to_string());
 
-    let _ = dotenv();
 
-    // Get iTELL AI Supabase configuration from environment variables
-    let embeddings_supabase_url = env::var("EMBEDDINGS_SUPABASE_URL")
-        .context("EMBEDDINGS_SUPABASE_URL environment variable is required. Please set it in your .env file.")?;
-    let embeddings_supabase_api_key = env::var("EMBEDDINGS_SUPABASE_API_KEY")
-        .context("EMBEDDINGS_SUPABASE_API_KEY environment variable is required. Please set it in your .env file.")?;
+    // Get iTELL AI Supabase configuration from environment variables (optional)
+    let embeddings_supabase_url = env::var("EMBEDDINGS_SUPABASE_URL").ok();
+    let embeddings_supabase_api_key = env::var("EMBEDDINGS_SUPABASE_API_KEY").ok();
 
     Ok(Config::new(
         volume_id,
@@ -104,39 +100,47 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    println!("{}✅ Content fetched successfully{}", GREEN, RESET);
     println!("Volume: {} ({})", volume.title, volume.slug);
     println!("Created {} pages in {}", pages.len(), &config.output_dir);
     println!();
 
-    // Start health check
-    println!("{}🔍 Starting vector validation...{}", YELLOW, RESET);
-    let embedding_slugs_array = get_embedding_slugs(
-        &config.embeddings_supabase_url,
-        &config.embeddings_supabase_api_key,
-        &volume.slug.as_str(),
-    )
-    .context("Failed to get embedding slugs")?;
+    // Perform health check only if Supabase credentials are provided
+    match (&config.embeddings_supabase_url, &config.embeddings_supabase_api_key) {
+        (Some(url), Some(api_key)) => {
+            println!("{}🔍 Starting vector validation...{}", YELLOW, RESET);
+            let embedding_slugs_array = get_embedding_slugs(
+                url,
+                api_key,
+                &volume.slug.as_str(),
+            )
+            .context("Failed to get embedding slugs")?;
 
-    let health_check = perform_health_check(
-        &config.volume_id,
-        &volume.slug,
-        &volume.title,
-        &pages,
-        &embedding_slugs_array,
-    )
-    .context("Failed to perform health check")?;
+            let health_check = perform_health_check(
+                &config.volume_id,
+                &volume.slug,
+                &volume.title,
+                &pages,
+                &embedding_slugs_array,
+            )
+            .context("Failed to perform health check")?;
 
-    // Print health check results and determine exit code
-    let validation_passed = print_health_check_summary(&health_check);
+            // Print health check results and determine exit code
+            let validation_passed = print_health_check_summary(&health_check);
 
-    // Exit with appropriate code for GitHub Actions
-    if validation_passed {
-        println!("{}✅ Vector validation passed!{}", GREEN, RESET);
-        process::exit(0);
-    } else {
-        println!("{}❌ Vector validation failed!{}", RED, RESET);
-        process::exit(1);
+            // Exit with appropriate code for GitHub Actions
+            if validation_passed {
+                println!("{}✅ Vector validation passed!{}", GREEN, RESET);
+                process::exit(0);
+            } else {
+                println!("{}❌ Vector validation failed!{}", RED, RESET);
+                process::exit(1);
+            }
+        }
+        _ => {
+            println!("{}⚠️  Skipping vector validation (Supabase credentials not provided){}", YELLOW, RESET);
+            println!("{}✅ Content fetched successfully{}", GREEN, RESET);
+            process::exit(0);
+        }
     }
 }
 
