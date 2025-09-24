@@ -17,8 +17,9 @@ env:
     ${{ github.event.inputs.commit_message || 'Auto update content from
     fetch_volume' }}
   REPO_NAME: "learlab/itell"
-  VOLUME_IDS: ${{ github.event.inputs.volume_ids ||
-    'nhm9t3owr7ze7ij01uduaiop,bi049c8kjvr7ubolz69lnkfh' }}
+  VOLUME_IDS:
+    ${{ github.event.inputs.volume_ids ||
+    't8gcaq5m82inj19xsu8qe3ml,r45rrxumaunejh5kwh6o7gr3' }}
 jobs:
   fetch-volume:
     runs-on: ubuntu-latest
@@ -50,7 +51,8 @@ jobs:
         id: fetch_and_validate
         env:
           EMBEDDINGS_SUPABASE_URL: ${{ secrets.EMBEDDINGS_SUPABASE_URL }}
-          EMBEDDINGS_SUPABASE_API_KEY: ${{ secrets.EMBEDDINGS_SUPABASE_API_KEY }}
+          EMBEDDINGS_SUPABASE_API_KEY:
+            ${{ secrets.EMBEDDINGS_SUPABASE_API_KEY }}
         run: |
           # Initialize tracking variables
           validation_results=""
@@ -88,12 +90,12 @@ jobs:
           # Remove trailing commas
           successful_volumes=${successful_volumes%,}
           failed_volumes=${failed_volumes%,}
-          
+
           # Set outputs for CMS to read
           echo "status=$overall_status" >> $GITHUB_OUTPUT
           echo "successful_volumes=$successful_volumes" >> $GITHUB_OUTPUT
           echo "failed_volumes=$failed_volumes" >> $GITHUB_OUTPUT
-          
+
           if [ "$overall_status" = "failed" ]; then
             message="❌ Vector validation failed for: $failed_volumes"
             if [ -n "$successful_volumes" ]; then
@@ -143,9 +145,8 @@ jobs:
           # Define volumes and their paths in an associative array
           declare -A volumes
           volumes=(
-            ["nhm9t3owr7ze7ij01uduaiop"]="apps/rmp/content/textbook"
-            ["bi049c8kjvr7ubolz69lnkfh"]="apps/introduction-to-computing/content/textbook"
-            ["k4szzxaraamln78crrfoauqd"]="apps/middlesex/content/textbook"
+            ["r45rrxumaunejh5kwh6o7gr3"]="apps/demo/content/textbook"
+            ["t8gcaq5m82inj19xsu8qe3ml"]="apps/nlp/content/textbook"
             ["n5s87ty7pbpbrmjenxc0ssjh"]="apps/test-publish-workflow/content/textbook"
           )
 
