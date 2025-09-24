@@ -8,7 +8,7 @@ testing:
 	./build.sh r45rrxumaunejh5kwh6o7gr3 ../itell/apps/testing/content/textbook
 
 nlp:
-	./build.sh t8gcaq5m82inj19xsu8qe3ml ../itell/apps/testing/content/textbook
+	./build.sh t8gcaq5m82inj19xsu8qe3ml ../itell/apps/nlp/content/textbook
 
 chevron:
 	./build.sh vb1n097d5bcdes7qyeidww2q ../itell/apps/chevron/content/textbook
@@ -26,4 +26,4 @@ introduction-to-computing:
 	./build.sh bi049c8kjvr7ubolz69lnkfh ../itell/apps/introduction-to-computing/content/textbook
 
 civic:
-	./build.sh r45rrxumaunejh5kwh6o7gr3 ../itell/apps/testing/content/textbook
+	./build.sh r45rrxumaunejh5kwh6o7gr3 ../itell/apps/demo/content/textbook
