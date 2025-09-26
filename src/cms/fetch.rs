@@ -19,6 +19,7 @@ pub struct VolumeData {
     pub slug: String,
     pub free_pages: Vec<String>,
     pub summary: Option<String>,
+    pub volume_config: Option<serde_json::Value>,
     pages: Vec<serde_json::Value>,
 }
 
@@ -74,11 +75,14 @@ pub fn get_volume_data(volume_id: &str) -> Result<VolumeData> {
         .context("No pages in volume response")?
         .to_owned();
 
+    let volume_config = data.get("VolumeConfig").cloned();
+
     Ok(VolumeData {
         title: get_attribute(data, "Title").context("Volume must set title")?,
         description: get_attribute(data, "Description").context("Volume must set description")?,
         summary: get_attribute(data, "VolumeSummary"),
         slug: get_attribute(data, "Slug").context("Volume must set slug")?,
+        volume_config,
         pages,
         free_pages,
     })

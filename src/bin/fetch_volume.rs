@@ -168,6 +168,15 @@ fn create_volume_metadata(volume: &VolumeData, output_dir: &str) -> anyhow::Resu
         VolumeFrontmatter::Summary(volume.summary.as_deref()),
     );
 
+    // Flatten VolumeConfig fields into top-level fields
+    if let Some(volume_config) = &volume.volume_config {
+        if let Some(config_object) = volume_config.as_object() {
+            for (key, value) in config_object {
+                map.insert(Box::leak(key.clone().into_boxed_str()), VolumeFrontmatter::VolumeConfigValue(value));
+            }
+        }
+    }
+
     let content = serde_yaml_ng::to_string(&map).context("failed to serialize volume metadata")?;
     write!(file, "{}", content).context("failed to write volume metadata")?;
 
@@ -247,4 +256,5 @@ enum VolumeFrontmatter<'a> {
     Description(&'a str),
     FreePages(&'a [String]),
     Summary(Option<&'a str>),
+    VolumeConfigValue(&'a serde_json::Value),
 }
