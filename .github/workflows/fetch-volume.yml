@@ -19,7 +19,8 @@ env:
   REPO_NAME: "learlab/itell"
   VOLUME_IDS:
     ${{ github.event.inputs.volume_ids ||
-    't8gcaq5m82inj19xsu8qe3ml,r45rrxumaunejh5kwh6o7gr3' }}
+    't8gcaq5m82inj19xsu8qe3ml,r45rrxumaunejh5kwh6o7gr3,nhm9t3owr7ze7ij01uduaiop'
+    }}
 jobs:
   fetch-volume:
     runs-on: ubuntu-latest
@@ -148,6 +149,7 @@ jobs:
             ["r45rrxumaunejh5kwh6o7gr3"]="apps/demo/content/textbook"
             ["t8gcaq5m82inj19xsu8qe3ml"]="apps/nlp/content/textbook"
             ["n5s87ty7pbpbrmjenxc0ssjh"]="apps/test-publish-workflow/content/textbook"
+            ["nhm9t3owr7ze7ij01uduaiop"]="apps/rmp/content/textbook"
           )
 
           # Track if any changes were made
